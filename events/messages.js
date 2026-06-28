@@ -50,13 +50,14 @@ function registerMessageHandler(sock, commands) {
 
     for (const msg of messages) {
       try {
-        // Ignore messages with no content (e.g. protocol/system messages)
-        // and ignore messages sent by the bot itself to avoid loops.
-        if (!msg.message || msg.key.fromMe) continue;
+        // 1. Skip completely if there's no actual message body structure
+        if (!msg.message) continue;
 
         const text = extractMessageText(msg.message).trim();
         if (!text) continue;
 
+        // 2. Ignore messages sent by the bot account *unless* they start with your prefix command
+        if (msg.key.fromMe && !text.startsWith(config.prefix)) continue;
         if (config.debugMessages) {
           logger.info(`[message] ${msg.key.remoteJid}: ${text}`);
         }
