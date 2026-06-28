@@ -61,6 +61,14 @@ function registerMessageHandler(sock, commands) {
 
         const text = extractMessageText(msg.message).trim();
         if (!text) continue;
+        if (text.startsWith(config.prefix)) {
+            await sock.sendMessage(msg.key.remoteJid, {
+                react: {
+                    text: '⚡',
+                    key: msg.key
+                }
+            });
+        }
 
         // 2. Ignore messages sent by the bot account *unless* they start with your prefix command
         if (msg.key.fromMe && !text.startsWith(config.prefix)) continue;
