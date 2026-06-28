@@ -46,7 +46,7 @@ module.exports = {
         // Your 13 commands
         const categories = {
             'GROUP': ['demote', 'groupinfo', 'kick', 'mute', 'promote', 'tagall', 'warn'],
-            'SETTINGS': ['anticall', 'autoread', 'mode'],
+            'SETTINGS': ['anticall', 'autoread', 'autorecording', 'autotyping', 'mode'],
             'MISC': ['calc', 'help', 'joke', 'menu', 'ping', 'quote']
         };
 
