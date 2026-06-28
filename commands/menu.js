@@ -48,8 +48,8 @@ module.exports = {
     'GROUP': ['demote', 'groupinfo', 'kick', 'mute', 'promote', 'tagall', 'warn'],
     'SETTINGS': ['anticall', 'autoread', 'autorecording', 'autotyping', 'mode'],
     'DOWNLOAD': ['download'], 
-    'GAMES': ['user', 'trivia', 'hi', 'game trivia'],     
-    'MISC': ['calc', 'help', 'joke', 'menu', 'ping', 'quote']
+    'GAMES': ['game'],     
+    'MISC': ['calc', 'help', 'joke', 'menu', 'ping', 'quote', 'user']
 };
 
         for (const [categoryName, commandList] of Object.entries(categories)) {
