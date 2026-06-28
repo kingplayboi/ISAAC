@@ -46,7 +46,7 @@ module.exports = {
         // Your 13 commands
         const categories = {
             'GROUP': ['demote', 'groupinfo', 'kick', 'mute', 'promote', 'tagall', 'warn'],
-            'MISC': ['calc', 'help', 'joke', 'menu', 'ping', 'quote']
+            'MISC': ['calc', 'help', 'joke', 'menu', 'ping', 'quote','settings']
         };
 
         for (const [categoryName, commandList] of Object.entries(categories)) {
