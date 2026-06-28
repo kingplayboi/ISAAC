@@ -12,7 +12,7 @@
 module.exports = {
   // The character (or string) that must precede every command.
   // Example: with prefix "!", users type "!ping" to trigger the ping command.
-  prefix: '!',
+  prefix: '.',
 
   // Display name for the bot, used in messages like the !menu command.
   botName: 'Baileys Starter Bot',
