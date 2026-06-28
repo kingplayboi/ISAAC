@@ -76,8 +76,37 @@ function registerMessageHandler(sock, commands) {
           logger.info(`[message] ${msg.key.remoteJid}: ${text}`);
         }
 
-        // Only react to messages that start with our configured prefix.
-        if (!text.startsWith(config.prefix)) continue;
+        // Before checking the command prefix, handle two cases that work
+        // on PLAIN messages (no "!" needed): the active number-guessing
+        // game, and fixed greeting auto-replies.
+        if (!text.startsWith(config.prefix)) {
+          const { activeGames } = require('../commands/game');
+          const game = activeGames.get(msg.key.remoteJid);
+          if (game && game.type === 'number' && /^\d+$/.test(text)) {
+            const guess = parseInt(text, 10);
+            game.attempts += 1;
+            if (guess === game.target) {
+              activeGames.delete(msg.key.remoteJid);
+              await sock.sendMessage(
+                msg.key.remoteJid,
+                { text: `🎉 Correct! The number was ${game.target}. You got it in ${game.attempts} attempt(s).` },
+                { quoted: msg }
+              );
+            } else if (guess < game.target) {
+              await sock.sendMessage(msg.key.remoteJid, { text: '📈 Higher!' }, { quoted: msg });
+            } else {
+              await sock.sendMessage(msg.key.remoteJid, { text: '📉 Lower!' }, { quoted: msg });
+            }
+            continue;
+          }
+
+          const { getAutoReply } = require('../utils/autoreply');
+          const autoReplyText = getAutoReply(text);
+          if (autoReplyText) {
+            await sock.sendMessage(msg.key.remoteJid, { text: autoReplyText }, { quoted: msg });
+          }
+          continue;
+        }
 
         // Split "!ping hello world" into command="ping", args=["hello","world"]
         const withoutPrefix = text.slice(config.prefix.length).trim();
