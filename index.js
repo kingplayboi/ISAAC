@@ -1,3 +1,4 @@
+globalThis.crypto = require('node:crypto').webcrypto;
 /**
  * index.js
  * --------
@@ -58,6 +59,25 @@ async function startBot() {
 
     // Persist updated credentials to disk every time Baileys refreshes them.
     sock.ev.on('creds.update', saveCreds);
+
+    // If there's no saved session yet, offer pairing-code login as an
+    // alternative to scanning the QR. Skipped automatically once
+    // state.creds.registered becomes true after a successful link.
+    if (!state.creds.registered) {
+      const readline = require('readline');
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      rl.question(
+        'Enter your WhatsApp number with country code (e.g. 15551234567), or press Enter to use QR instead: ',
+        async (phoneNumber) => {
+          rl.close();
+          if (phoneNumber && phoneNumber.trim()) {
+            const code = await sock.requestPairingCode(phoneNumber.trim());
+            logger.info(`Your pairing code: ${code}`);
+            logger.info('Enter this code in WhatsApp > Linked Devices > Link with phone number.');
+          }
+        }
+      );
+    }
 
     // Register all event listeners, passing startBot itself into the
     // connection handler so it can trigger a clean reconnect when needed.
