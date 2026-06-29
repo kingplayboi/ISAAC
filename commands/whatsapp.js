@@ -178,35 +178,19 @@ module.exports = [
 
   // ── VIEW ONCE (VV) ────────────────────────────────────────────────────────
   {
-{
+  {const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+
+module.exports = {
   name: 'vv',
   description: 'View a view-once message. Reply to a view-once message with .vv',
 
-<<<<<<< HEAD
-const quoted = ctx?.quotedMessage;
-
-if (!quoted) {
-  return sock.sendMessage(jid, {
-    text: '❌ Reply to a view-once message with .vv'
-  }, { quoted: msg });
-}
-
-const viewOnce =
-  quoted.viewOnceMessage?.message ||
-  quoted.viewOnceMessageV2?.message ||
-  quoted.viewOnceMessageV2Extension?.message;
-
-if (!viewOnce) {
-  return sock.sendMessage(jid, {
-    text: '❌ That is not a view-once message.'
-  }, { quoted: msg });
-}
->>>>>>> af07967 (Fix vv command)
+  async execute(sock, msg) {
+    const jid = msg.key.remoteJid;
+    const ctx = msg.message?.extendedTextMessage?.contextInfo;
+    const quoted = ctx?.quotedMessage;
 
     if (!quoted) {
-      return sock.sendMessage(jid, {
-        text: '❌ Reply to a view-once message with .vv'
-      }, { quoted: msg });
+      return sock.sendMessage(jid, { text: '❌ Reply to a view-once message with .vv' }, { quoted: msg });
     }
 
     const viewOnce =
@@ -215,17 +199,33 @@ if (!viewOnce) {
       quoted.viewOnceMessageV2Extension?.message;
 
     if (!viewOnce) {
-      return sock.sendMessage(jid, {
-        text: '❌ That is not a view-once message.'
-      }, { quoted: msg });
+      return sock.sendMessage(jid, { text: '❌ That is not a view-once message.' }, { quoted: msg });
     }
 
-    const type = Object.keys(viewOnce)[0];
-    const content = viewOnce[type];
+    try {
+      const type = Object.keys(viewOnce)[0];
+      const media = viewOnce[type];
 
-    await sock.sendMessage(jid, { [type]: content }, { quoted: msg });
+      // Download the media
+      const stream = await downloadContentFromMessage(media, type.replace('Message', '').toLowerCase());
+      let buffer = Buffer.from([]);
+      for await (const chunk of stream) {
+        buffer = Buffer.concat([buffer, chunk]);
+      }
+
+      // Send the downloaded media back
+      await sock.sendMessage(jid, { 
+        [type.replace('Message', '').toLowerCase()]: buffer,
+        caption: 'Captured View-Once message' 
+      }, { quoted: msg });
+
+    } catch (error) {
+      console.error('Error handling vv:', error);
+      await sock.sendMessage(jid, { text: '❌ Failed to process the view-once message.' }, { quoted: msg });
+    }
   }
-},
+};
+                             
 
   // ── ONLINE ────────────────────────────────────────────────────────────────
   {
