@@ -49,7 +49,7 @@ module.exports = {
     'SETTINGS': ['anticall', 'autoread', 'autorecording', 'autotyping', 'mode'],
     'DOWNLOAD': ['download'], 
     'GAMES': ['game'],     
-    'MISC': ['calc', 'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats']
+    'MISC': ['calc', 'alive',  'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats']
 };
 
         for (const [categoryName, commandList] of Object.entries(categories)) {
