@@ -177,8 +177,7 @@ module.exports = [
   },
 
   // ── VIEW ONCE (VV) ────────────────────────────────────────────────────────
-  {
-  {const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+  const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 module.exports = {
   name: 'vv',
@@ -196,7 +195,8 @@ module.exports = {
     const viewOnce =
       quoted.viewOnceMessage?.message ||
       quoted.viewOnceMessageV2?.message ||
-      quoted.viewOnceMessageV2Extension?.message;
+      quoted.viewOnceMessageV2Extension?.message ||
+      quoted.viewOnceMessageV3?.message;
 
     if (!viewOnce) {
       return sock.sendMessage(jid, { text: '❌ That is not a view-once message.' }, { quoted: msg });
@@ -205,9 +205,10 @@ module.exports = {
     try {
       const type = Object.keys(viewOnce)[0];
       const media = viewOnce[type];
+      const mediaType = type.replace('Message', '').toLowerCase();
 
       // Download the media
-      const stream = await downloadContentFromMessage(media, type.replace('Message', '').toLowerCase());
+      const stream = await downloadContentFromMessage(media, mediaType);
       let buffer = Buffer.from([]);
       for await (const chunk of stream) {
         buffer = Buffer.concat([buffer, chunk]);
@@ -215,16 +216,18 @@ module.exports = {
 
       // Send the downloaded media back
       await sock.sendMessage(jid, { 
-        [type.replace('Message', '').toLowerCase()]: buffer,
+        [mediaType]: buffer,
         caption: 'Captured View-Once message' 
       }, { quoted: msg });
 
     } catch (error) {
-      console.error('Error handling vv:', error);
-      await sock.sendMessage(jid, { text: '❌ Failed to process the view-once message.' }, { quoted: msg });
+      console.error('DEBUGGING ERROR:', error);
+      await sock.sendMessage(jid, { text: '❌ Debug Error: ' + error.message }, { quoted: msg });
     }
   }
 };
+
+  
                              
 
   // ── ONLINE ────────────────────────────────────────────────────────────────
