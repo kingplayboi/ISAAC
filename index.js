@@ -77,10 +77,13 @@ async function startBot() {
       // requestPairingCode() fails with "Connection Closed" (statusCode 428)
       // because the default query timeout is too short for the pairing
       // handshake. See WhiskeySockets/Baileys issue #1382 and #2008.
-      defaultQueryTimeoutMs: undefined,
+      defaultQueryTimeoutMs: 60000,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000,
+        retryRequestDelayMs: 250,
       // Pinning a specific browser string is another documented fix for
       // the same 428 error, per WhiskeySockets/Baileys issue #1382.
-      browser: ['Windows', 'Chrome', '114.0.5735.198'],
+      browser: ['Ubuntu', 'Chrome', '120.0.6099.130'],
     });
 
     // Persist updated credentials to disk every time Baileys refreshes them.
