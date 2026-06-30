@@ -45,14 +45,17 @@ module.exports = {
 
         // Your 13 commands
         const categories = {
-    'GROUP': ['demote', 'groupinfo', 'kick', 'mute', 'promote', 'tagall', 'warn'],
+    'GROUP': ['demote', 'groupinfo', 'kick', 'mute', 'promote', 'tagall', 'warn', 'add', 'invite', 'join', 'welcome', 'goodbye', 'unmute', 'amute', 'aunmute'],
     'SETTINGS': ['anticall', 'autoread', 'autorecording', 'autotyping', 'mode'],
-    'DOWNLOAD': ['download', 'spotify', 'play'], 
-    'GAMES': ['game'],
+    'DOWNLOAD': ['download', 'spotify', 'play', 'tiktok', 'ig', 'fb', 'twitter'],
+    'GAMES': ['game', 'tictactoe', 'move', 'ttend', 'rps', 'wordguess', 'guess', 'wgend', 'mathquiz', 'mans'],
     'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'vv', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],
-    'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'vv', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],     
     'AI': ['gemini', 'groq', 'gpt', 'dall', 'bing', 'upscale'],
-    'MISC': ['calc', 'alive',  'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats']
+    'SECURITY': ['antifake', 'antigm', 'antigstatus', 'antilink', 'antispam', 'antiword', 'common', 'gpp', 'gstatus'],
+    'USER': ['block', 'unblock', 'pp', 'fullpp', 'jid', 'gjid', 'left'],
+    'OWNER': ['owner', 'kill', 'backup', 'reminder', 'task', 'tog', 'update', 'updatenow'],
+    'TOOLS': ['webscan'],
+    'MISC': ['calc', 'alive', 'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats']
 };
 
         for (const [categoryName, commandList] of Object.entries(categories)) {
