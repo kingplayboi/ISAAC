@@ -49,7 +49,9 @@ module.exports = {
     'SETTINGS': ['anticall', 'autoread', 'autorecording', 'autotyping', 'mode'],
     'DOWNLOAD': ['download', 'spotify', 'play'], 
     'GAMES': ['game'],
+    'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'vv', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],
     'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'vv', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],     
+    'AI': ['gemini', 'groq', 'gpt', 'dall', 'bing', 'upscale'],
     'MISC': ['calc', 'alive',  'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats']
 };
 
