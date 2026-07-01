@@ -15,6 +15,7 @@ globalThis.crypto = require('node:crypto').webcrypto;
  */
 
 const path = require('path');
+const NodeCache = require('node-cache');
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -31,6 +32,11 @@ const { registerMessageHandler } = require('./events/messages');
 // into the message handler so it can dispatch incoming commands by name.
 const commandsPath = path.join(__dirname, 'commands');
 const commands = loadCommands(commandsPath);
+
+// Caches group metadata in memory so Baileys can resolve group encryption
+// sessions without re-fetching from WhatsApp on every message. Without this,
+// group commands can fail with a "No sessions" error.
+const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
 
 /**
  * Initializes (or re-initializes, on reconnect) the WhatsApp socket
@@ -84,10 +90,36 @@ async function startBot() {
       // Pinning a specific browser string is another documented fix for
       // the same 428 error, per WhiskeySockets/Baileys issue #1382.
       browser: ['Ubuntu', 'Chrome', '120.0.6099.130'],
+      // Lets Baileys resolve group encryption sessions from our in-memory
+      // cache instead of always hitting the network, which fixes "No
+      // sessions" errors when responding to commands sent in groups.
+      cachedGroupMetadata: async (jid) => groupCache.get(jid),
     });
 
     // Persist updated credentials to disk every time Baileys refreshes them.
     sock.ev.on('creds.update', saveCreds);
+
+    // Keep the group metadata cache warm whenever group info changes, so
+    // Baileys always has fresh data available for encryption sessions.
+    sock.ev.on('groups.update', async ([event]) => {
+      try {
+        if (!event?.id) return;
+        const metadata = await sock.groupMetadata(event.id);
+        groupCache.set(event.id, metadata);
+      } catch (error) {
+        logger.error(`[groupCache] Failed to update metadata for ${event?.id}: ${error.message}`);
+      }
+    });
+
+    sock.ev.on('group-participants.update', async (event) => {
+      try {
+        if (!event?.id) return;
+        const metadata = await sock.groupMetadata(event.id);
+        groupCache.set(event.id, metadata);
+      } catch (error) {
+        logger.error(`[groupCache] Failed to update metadata for ${event?.id}: ${error.message}`);
+      }
+    });
 
     // Request the pairing code now that the socket exists, if the person
     // chose to use one instead of scanning the QR.

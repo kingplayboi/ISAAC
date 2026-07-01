@@ -76,12 +76,22 @@ function registerMessageHandler(sock, commands) {
           logger.info(`[message] ${msg.key.remoteJid}: ${text}`);
         }
 
-        // Before checking the command prefix, handle two cases that work
-        // on PLAIN messages (no "!" needed): the active number-guessing
-        // game, and fixed greeting auto-replies.
-        if (!text.startsWith(config.prefix)) {
-          const { activeGames } = require('../commands/game');
-          const game = activeGames.get(msg.key.remoteJid);
+// Before checking the command prefix, handle cases that work
+          // on PLAIN messages (no "!" needed): Lydia auto-chat, the active
+          // number-guessing game, and fixed greeting auto-replies.
+          if (!text.startsWith(config.prefix)) {
+            const lydiaStore = require('../utils/lydiaStore');
+            const senderJid = msg.key.participant || msg.key.remoteJid;
+            if (lydiaStore.isEnabled(msg.key.remoteJid, senderJid)) {
+              const { getLydiaReply } = require('../utils/lydiaChat');
+              const reply = await getLydiaReply(text);
+              if (reply) {
+                await sock.sendMessage(msg.key.remoteJid, { text: reply }, { quoted: msg });
+              }
+              continue;
+            }
+
+            const { activeGames } = require('../commands/game');          const game = activeGames.get(msg.key.remoteJid);
           if (game && game.type === 'number' && /^\d+$/.test(text)) {
             const guess = parseInt(text, 10);
             game.attempts += 1;

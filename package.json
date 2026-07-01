@@ -19,9 +19,11 @@
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "^6.7.9",
+    "@whiskeysockets/baileys": "^6.7.22",
     "axios": "^1.18.1",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "node-cache": "^5.1.2",
     "pino": "^9.4.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
@@ -34,5 +36,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "allowScripts": {
+    "@whiskeysockets/baileys@6.7.22": true,
+    "protobufjs@7.6.4": true
   }
 }

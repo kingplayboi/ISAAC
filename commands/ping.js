@@ -3,10 +3,28 @@
  * ----------------
  * Advanced bot health-check command.
  *
- * Usage: !ping
+ * Reacts to the triggering message with a short sequence of emojis
+ * (like a little animation), then sends the stats and clears the
+ * reaction once the response has been delivered.
+ *
+ * Usage: .ping
  */
 
 const os = require('os');
+
+// The sequence of emojis to cycle through before responding.
+const REACTION_SEQUENCE = ['😡', '👀', '💀','😹', '✅'];
+const REACTION_DELAY_MS = 350;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function react(sock, msg, emoji) {
+  await sock.sendMessage(msg.key.remoteJid, {
+    react: { text: emoji, key: msg.key },
+  });
+}
 
 module.exports = {
   name: 'ping',
@@ -18,6 +36,12 @@ module.exports = {
 
     // Start timer
     const start = process.hrtime.bigint();
+
+    // Play the emoji reaction sequence on the triggering message.
+    for (const emoji of REACTION_SEQUENCE) {
+      await react(sock, msg, emoji);
+      await delay(REACTION_DELAY_MS);
+    }
 
     // Uptime
     const uptime = process.uptime();
@@ -62,5 +86,8 @@ module.exports = {
       { text },
       { quoted: msg }
     );
+
+    // Clear the reaction now that the response has been sent.
+    await react(sock, msg, '');
   },
 };
