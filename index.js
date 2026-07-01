@@ -98,6 +98,33 @@ async function startBot() {
 
     // Persist updated credentials to disk every time Baileys refreshes them.
     sock.ev.on('creds.update', saveCreds);
+let pairingCodeRequested = false;
+
+sock.ev.on('connection.update', async ({ connection }) => {
+  if (
+    connection === 'connecting' &&
+    phoneNumber &&
+    !pairingCodeRequested
+  ) {
+    pairingCodeRequested = true;
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const code = await sock.requestPairingCode(phoneNumber);
+
+      console.log('\n========================================');
+      console.log(`   YOUR PAIRING CODE: ${code}`);
+      console.log('========================================\n');
+
+      logger.info(
+        'Enter this code in WhatsApp > Linked Devices > Link with phone number.'
+      );
+    } catch (error) {
+      logger.error(`[pairing] ${error.message}`);
+    }
+  }
+});
 
     // Keep the group metadata cache warm whenever group info changes, so
     // Baileys always has fresh data available for encryption sessions.
@@ -120,16 +147,6 @@ async function startBot() {
         logger.error(`[groupCache] Failed to update metadata for ${event?.id}: ${error.message}`);
       }
     });
-
-    // Request the pairing code now that the socket exists, if the person
-    // chose to use one instead of scanning the QR.
-    if (phoneNumber) {
-      const code = await sock.requestPairingCode(phoneNumber);
-      console.log('\n========================================');
-      console.log(`   YOUR PAIRING CODE: ${code}`);
-      console.log('========================================\n');
-      logger.info('Enter this code in WhatsApp > Linked Devices > Link with phone number.');
-    }
 
     // Register all event listeners, passing startBot itself into the
     // connection handler so it can trigger a clean reconnect when needed.
