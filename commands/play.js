@@ -1,76 +1,118 @@
 const yts = require("yt-search");
-const ytdl = require("ytdl-core");
+const { execFile } = require("child_process");
+const { promisify } = require("util");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+const execFileAsync = promisify(execFile);
 
 module.exports = {
   name: "play",
+  description: "Search and download audio from YouTube",
 
   execute: async (sock, msg, args) => {
     const chatId = msg.key.remoteJid;
     const query = args.join(" ");
 
+    console.log("[PLAY] Query:", query);
+
     if (!query) {
-      return sock.sendMessage(chatId, {
+      return await sock.sendMessage(chatId, {
         text: "🎵 Example: .play calm down"
       });
     }
 
+    let outputFile = null;
+
     try {
+      console.log("[PLAY] Searching YouTube...");
+
       const search = await yts(query);
       const video = search.videos[0];
 
+      console.log("[PLAY] Video found:", video?.title);
+
       if (!video) {
-        return sock.sendMessage(chatId, {
+        return await sock.sendMessage(chatId, {
           text: "❌ No results found"
         });
       }
 
       await sock.sendMessage(chatId, {
-        text: `🎧 Playing:\n${video.title}`
+        text: `🎧 Downloading:\n*${video.title}*`
       });
 
-const stream = ytdl(video.url, {
-  filter: "audioonly",
-  quality: "lowestaudio"
-});
+      const outputTemplate = path.join(
+        os.tmpdir(),
+        `play_${Date.now()}.%(ext)s`
+      );
 
-let chunks = [];
+      console.log("[PLAY] Running yt-dlp...");
 
-stream.on("data", (chunk) => {
-  chunks.push(chunk);
-});
+      const { stdout, stderr } = await execFileAsync("yt-dlp", [
+        "-x",
+        "--audio-format", "mp3",
+        "--audio-quality", "0",
+        "--no-playlist",
+        "-o", outputTemplate,
+        video.url
+      ]);
 
-stream.on("error", (err) => {
-  console.log("Audio stream error:", err);
-});
+      if (stderr) {
+        console.log("[yt-dlp stderr]", stderr);
+      }
 
-stream.on("end", async () => {
-  try {
-    const buffer = Buffer.concat(chunks);
+      console.log("[yt-dlp stdout]", stdout);
 
-    if (!buffer || buffer.length === 0) {
-      return sock.sendMessage(chatId, {
-        text: "❌ Failed to load audio"
-      });
-    }
+      outputFile = outputTemplate.replace("%(ext)s", "mp3");
 
-    await sock.sendMessage(chatId, {
-      audio: buffer,
-      mimetype: "audio/mp4",
-      ptt: false
-    }, { quoted: msg });
+      console.log("[PLAY] Output file:", outputFile);
 
-  } catch (e) {
-    console.log("Send error:", e);
-    sock.sendMessage(chatId, {
-      text: "❌ Error sending audio"
-    });
-  }
-});
+      if (!fs.existsSync(outputFile)) {
+        throw new Error(`Audio file not found: ${outputFile}`);
+      }
+
+      const stats = fs.statSync(outputFile);
+
+      console.log("[PLAY] File size:", stats.size);
+
+      if (stats.size === 0) {
+        throw new Error("Downloaded file is empty");
+      }
+
+      await sock.sendMessage(
+        chatId,
+        {
+          audio: fs.readFileSync(outputFile),
+          mimetype: "audio/mpeg",
+          fileName: `${video.title}.mp3`,
+          ptt: false
+        },
+        { quoted: msg }
+      );
+
+      console.log("[PLAY] Audio sent successfully");
+
     } catch (err) {
-      console.log(err);
-      sock.sendMessage(chatId, {
-        text: "❌ Failed to play song"
-      });
+      console.error("[PLAY ERROR]", err);
+
+      await sock.sendMessage(
+        chatId,
+        {
+          text: `❌ Failed to play song.\n\n${err.message}`
+        },
+        { quoted: msg }
+      );
+    } finally {
+      if (outputFile && fs.existsSync(outputFile)) {
+        try {
+          fs.unlinkSync(outputFile);
+          console.log("[PLAY] Temporary file deleted");
+        } catch (e) {
+          console.log("[PLAY] Cleanup error:", e);
+        }
+      }
     }
   }
 };
