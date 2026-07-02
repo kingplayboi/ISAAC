@@ -29,6 +29,29 @@ const { registerConnectionHandler } = require('./events/connection');
 const { registerMessageHandler } = require('./events/messages');
 
 // Load every command file once at startup. The resulting Map is passed
+const fs = require('fs');
+
+/**
+ * If a SESSION_ID is provided (via Heroku config vars or .env) and no
+ * local auth session exists yet, decode it back into creds.json so the
+ * bot can connect without needing a fresh QR/pairing code scan.
+ */
+function restoreSessionFromEnv() {
+  const authDir = path.join(__dirname, config.authFolder);
+  const credsPath = path.join(authDir, 'creds.json');
+
+  if (config.sessionId && !fs.existsSync(credsPath)) {
+    try {
+      if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
+      const raw = config.sessionId.replace(/^ISAAC-MD:~/, ''); // strip prefix if present
+      const buffer = Buffer.from(raw, 'base64');
+      fs.writeFileSync(credsPath, buffer);
+      logger.info('✅ Restored session from SESSION_ID.');
+    } catch (error) {
+      logger.error(`[restoreSessionFromEnv] Failed to restore session: ${error.message}`);
+    }
+  }
+}
 // into the message handler so it can dispatch incoming commands by name.
 const commandsPath = path.join(__dirname, 'commands');
 const commands = loadCommands(commandsPath);
@@ -47,6 +70,8 @@ async function startBot() {
     // useMultiFileAuthState persists login credentials to disk (in the
     // folder defined by config.authFolder) so you don't need to re-scan
     // the QR code every time the bot restarts.
+restoreSessionFromEnv();
+
     const { state, saveCreds } = await useMultiFileAuthState(
       path.join(__dirname, config.authFolder)
     );
@@ -59,7 +84,7 @@ async function startBot() {
     // between this prompt and Baileys generating a QR code. Only asked
     // once, on first run, before any session exists.
     let phoneNumber = null;
-    if (!state.creds.registered) {
+    if (!state.creds.registered && process.stdin.isTTY) {
       const readline = require('readline');
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
       phoneNumber = await new Promise((resolve) => {
