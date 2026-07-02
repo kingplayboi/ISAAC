@@ -1,71 +1,87 @@
-/*
- * Spotify Downloader Command
- * Searches YouTube for the requested track and streams the audio
- * directly via ytdl-core (no third-party proxy APIs).
- */
-const ytdl = require('@distube/ytdl-core');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const yts = require('yt-search');
 const config = require('../config/config');
 
 module.exports = {
-    name: 'spotify',
-    description: 'Download from Spotify (name or link)',
-    async execute(sock, msg, args) {
-        const jid = msg.key.remoteJid;
-        const prefix = config.prefix || '.';
-        const text = args.join(' ').trim();
+  name: 'spotify',
+  description: 'Download songs as MP3',
 
-        if (!text) {
-            return sock.sendMessage(jid, {
-                text: `*🎵 Spotify Downloader*\n\nUsage:\n  *${prefix}spotify* _song name_\n  *${prefix}spotify* _<spotify URL>_\n\nExample: *${prefix}spotify* Shape of You Ed Sheeran`,
-            }, { quoted: msg });
-        }
+  async execute(sock, msg, args) {
+    const jid = msg.key.remoteJid;
+    const query = args.join(' ').trim();
 
-        try {
-            await sock.sendMessage(jid, { react: { text: '🎵', key: msg.key } });
+    if (!query) {
+      return sock.sendMessage(jid, {
+        text: `🎵 Spotify Downloader\n\nUsage:\n${config.prefix}spotify song name`
+      }, { quoted: msg });
+    }
 
-            const results = await yts(text);
-            const video = results.videos[0];
+    try {
+      await sock.sendMessage(jid, {
+        react: { text: '🎵', key: msg.key }
+      });
 
-            if (!video) {
-                return sock.sendMessage(jid, { text: `❌ No results found for: *${text}*` }, { quoted: msg });
-            }
+      // 1. search youtube
+      const results = await yts(query);
+      const video = results.videos[0];
 
-            const safeTitle = video.title.replace(/[\/\\:*?"<>|]/g, '').trim();
-            const fileName = `${safeTitle}.mp3`;
-            const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+      if (!video) {
+        return sock.sendMessage(jid, {
+          text: `❌ No results found for: *${query}*`
+        }, { quoted: msg });
+      }
 
-            await sock.sendMessage(jid, {
-                text: `⬇️ Found: *${video.title}*\n⏱️ ${video.timestamp}\n\nDownloading audio...`,
-            }, { quoted: msg });
+      const title = video.title.replace(/[\/\\:*?"<>|]/g, '').slice(0, 60);
+      const url = `https://www.youtube.com/watch?v=${video.videoId}`;
 
-            // Download audio directly from YouTube into a buffer
-            const chunks = [];
-            await new Promise((resolve, reject) => {
-                const stream = ytdl(videoUrl, { filter: 'audioonly', quality: 'highestaudio' });
-                stream.on('data', (chunk) => chunks.push(chunk));
-                stream.on('end', resolve);
-                stream.on('error', reject);
-            });
+      await sock.sendMessage(jid, {
+        text: `⬇️ Downloading: *${title}*`
+      }, { quoted: msg });
 
-            const audioBuffer = Buffer.concat(chunks);
+      // 2. safe file path (NO /tmp)
+      const filePath = path.join(__dirname, `${Date.now()}.mp3`);
 
-            if (audioBuffer.length < 1000) {
-                return sock.sendMessage(jid, {
-                    text: '❌ Download failed — the audio stream was empty. Please try again later.',
-                }, { quoted: msg });
-            }
+      // 3. download audio using yt-dlp
+      execSync(
+        `yt-dlp -f bestaudio --extract-audio --audio-format mp3 -o "${filePath}" "${url}"`
+      );
 
-            await sock.sendMessage(jid, {
-                audio: audioBuffer,
-                mimetype: 'audio/mpeg',
-                fileName,
-            }, { quoted: msg });
+      // 4. verify file
+      if (!fs.existsSync(filePath)) {
+        return sock.sendMessage(jid, {
+          text: '❌ Download failed'
+        }, { quoted: msg });
+      }
 
-            await sock.sendMessage(jid, { text: `✅ Successfully downloaded: *${safeTitle}*` }, { quoted: msg });
-        } catch (err) {
-            console.error(err);
-            await sock.sendMessage(jid, { text: '❌ An internal error occurred while processing your request.' }, { quoted: msg });
-        }
-    },
+      const fileBuffer = fs.readFileSync(filePath);
+
+      if (fileBuffer.length < 1000) {
+        return sock.sendMessage(jid, {
+          text: '❌ Empty audio file'
+        }, { quoted: msg });
+      }
+
+      // 5. send audio
+      await sock.sendMessage(jid, {
+        audio: fileBuffer,
+        mimetype: 'audio/mpeg',
+        fileName: `${title}.mp3`
+      }, { quoted: msg });
+
+      // 6. cleanup
+      fs.unlinkSync(filePath);
+
+      await sock.sendMessage(jid, {
+        text: `✅ Done: *${title}*`
+      }, { quoted: msg });
+
+    } catch (err) {
+      console.error(err);
+      await sock.sendMessage(jid, {
+        text: `❌ Error: ${err.message}`
+      }, { quoted: msg });
+    }
+  }
 };

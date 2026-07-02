@@ -32,7 +32,7 @@ module.exports = {
 
         // Option A Header with safe title formatting
         let menuMessage = `┌──────────────────────────────┐\n`;
-        menuMessage += `  🤖 \`\`\`ISAAC ASSISTANT\`\`\`\n`;
+        menuMessage += `  🤖 *_ISAAC BOT_*\n`;
         menuMessage += `  ━━━━━━━━━━━━━━━━━━━━━━━\n`;
         menuMessage += `  👤 Owner  : Pappi Isaac\n`;
         menuMessage += `  ⚡ Prefix : [ ${config.prefix || '.'} ]\n`;
@@ -41,7 +41,8 @@ module.exports = {
         menuMessage += `  📦 Engine : Baileys v5\n`;
         menuMessage += `  💾 Ram    : ${usedRamGb} GB / ${totalRamGb} GB\n`;
         menuMessage += `  ⏱️ Uptime : ${formatUptime(uptimeSeconds)}\n`;
-        menuMessage += `└──────────────────────────────┘\n`;
+menuMessage += `  🔌 Plugins : ${commands.size} commands\n`;
+menuMessage += `└──────────────────────────────┘\n`;
 
         // Your 13 commands
 const categories = {

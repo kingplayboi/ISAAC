@@ -49,6 +49,7 @@ function registerMessageHandler(sock, commands) {
     if (type !== 'notify') return;
 
     for (const msg of messages) {
+  console.log('MESSAGE RECEIVED:', msg.key);
       try {
         // 1. Skip completely if there's no actual message body structure
         if (!msg.message) continue;
@@ -60,6 +61,10 @@ function registerMessageHandler(sock, commands) {
         }
 
         const text = extractMessageText(msg.message).trim();
+
+console.log('TEXT RECEIVED =', JSON.stringify(text));
+console.log('PREFIX =', JSON.stringify(config.prefix));
+console.log('STARTS WITH PREFIX =', text.startsWith(config.prefix));
         if (!text) continue;
         if (text.startsWith(config.prefix)) {
             await sock.sendMessage(msg.key.remoteJid, {
@@ -121,6 +126,8 @@ function registerMessageHandler(sock, commands) {
         // Split "!ping hello world" into command="ping", args=["hello","world"]
         const withoutPrefix = text.slice(config.prefix.length).trim();
         const [commandName, ...args] = withoutPrefix.split(/\s+/);
+console.log('COMMAND =', JSON.stringify(commandName));
+console.log('ARGS =', args);
 
         const command = commands.get(commandName.toLowerCase());
 
