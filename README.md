@@ -35,6 +35,21 @@ ISAAC BOT
         <img src="https://img.shields.io/badge/download-zip-blue" alt="Download zip" width="200">
       </a>
     </p>
+    ## HEROKU DEPLOYMENT 
+
+<a href="https://isaac-md-nine.vercel.app" target="_blank" style="margin-right: 10px;">
+    <img alt="Deploy to Heroku" src="https://www.herokucdn.com/deploy/button.svg"/>
+  </a>
+</p>
+
+- Make sure your fork is synced with the latest changes.
+- Fill All the required variables. 
+
+<!-- Glowing Footer -->
+<p align="center">
+  <img src="https://i.imgur.com/dBaSKWF.gif" height="40" width="100%">
+</p>
+
 
   
 DEPLOY TO HEROKU
