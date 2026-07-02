@@ -50,15 +50,16 @@ const categories = {
     'DOWNLOAD': ['download', 'spotify', 'play', 'tiktok', 'ig', 'fb', 'twitter'],
     'GAMES': ['game', 'tictactoe', 'move', 'ttend', 'rps', 'wordguess', 'guess', 'wgend', 'mathquiz', 'mans'],
     'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'vv', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],
-    'AI': ['gemini', 'groq', 'gpt', 'dall','lydia', 'bing', 'upscale'],
+    'AI': ['gemini', 'groq', 'gpt', 'dall', 'bing', 'upscale', 'lydia'],
     'SECURITY': ['antifake', 'antigm', 'antigstatus', 'antilink', 'antispam', 'antiword', 'common', 'gpp', 'gstatus'],
     'USER': ['block', 'unblock', 'pp', 'fullpp', 'jid', 'gjid', 'left'],
     'OWNER': ['owner', 'kill', 'backup', 'reminder', 'task', 'tog', 'update', 'updatenow'],
     'TOOLS': ['webscan'],
     'LIVESCORE': ['livescore', 'table'],
+    'CODING': ['enc', 'gpass', 'compile-py', 'compile-js', 'compile-c', 'compile-c++'],
+    'CONVERTER': ['topdf', 'toexcel', 'toword', 'tovideo', 'toaudio', 'toimg', 'ocr', 'totext', 'carbon'],
     'MISC': ['isaac', 'script', 'calc', 'alive', 'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats']
-};
-        for (const [categoryName, commandList] of Object.entries(categories)) {
+};        for (const [categoryName, commandList] of Object.entries(categories)) {
             menuMessage += ` ╭─❏ ${categoryName} ❏\n`;
             commandList.forEach(cmd => {
                 menuMessage += ` │ ${formatCommand(cmd)}\n`;
