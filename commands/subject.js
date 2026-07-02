@@ -22,23 +22,15 @@ module.exports = {
       return;
     }
 
-    const normalizeJid = (jid) => jid?.split('@')[0].split(':')[0];
     const metadata = await sock.groupMetadata(jid);
     const senderJid = msg.key.participant || msg.key.remoteJid;
-    const botJid = sock.user.id;
+    const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
 
-    const isSenderAdmin = metadata.participants.some(
-      (p) => normalizeJid(p.id) === normalizeJid(senderJid) && !!p.admin
-    );
-    const isBotAdmin = metadata.participants.some(
-      (p) => normalizeJid(p.id) === normalizeJid(botJid) && !!p.admin
-    );
-
-    if (!isSenderAdmin) {
+    if (!isSenderAdmin(metadata, senderJid)) {
       await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
       return;
     }
-    if (!isBotAdmin) {
+    if (!isBotAdmin(sock, metadata)) {
       await sock.sendMessage(jid, { text: '❌ I need to be a group admin to change the group name.' }, { quoted: msg });
       return;
     }
@@ -50,4 +42,4 @@ module.exports = {
       await sock.sendMessage(jid, { text: `❌ Failed to change group name: ${error.message}` }, { quoted: msg });
     }
   },
-};		
+};

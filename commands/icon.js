@@ -3,8 +3,6 @@
  * -----------------
  * Changes the group's icon/photo. Admin-only.
  * Reply to an image message with .icon
- *
- * Usage: reply to an image with .icon
  */
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
@@ -19,23 +17,15 @@ module.exports = {
       return;
     }
 
-    const normalizeJid = (jid) => jid?.split('@')[0].split(':')[0];
     const metadata = await sock.groupMetadata(jid);
     const senderJid = msg.key.participant || msg.key.remoteJid;
-    const botJid = sock.user.id;
+    const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
 
-    const isSenderAdmin = metadata.participants.some(
-      (p) => normalizeJid(p.id) === normalizeJid(senderJid) && !!p.admin
-    );
-    const isBotAdmin = metadata.participants.some(
-      (p) => normalizeJid(p.id) === normalizeJid(botJid) && !!p.admin
-    );
-
-    if (!isSenderAdmin) {
+    if (!isSenderAdmin(metadata, senderJid)) {
       await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
       return;
     }
-    if (!isBotAdmin) {
+    if (!isBotAdmin(sock, metadata)) {
       await sock.sendMessage(jid, { text: '❌ I need to be a group admin to change the group photo.' }, { quoted: msg });
       return;
     }

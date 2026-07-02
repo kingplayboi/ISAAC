@@ -16,15 +16,11 @@ module.exports = {
       return;
     }
 
-    const normalizeJid = (jid) => jid?.split('@')[0].split(':')[0];
     const metadata = await sock.groupMetadata(jid);
     const senderJid = msg.key.participant || msg.key.remoteJid;
+    const { isSenderAdmin } = require('../utils/isAdmin');
 
-    const isSenderAdmin = metadata.participants.some(
-      (p) => normalizeJid(p.id) === normalizeJid(senderJid) && !!p.admin
-    );
-
-    if (!isSenderAdmin) {
+    if (!isSenderAdmin(metadata, senderJid)) {
       await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
       return;
     }

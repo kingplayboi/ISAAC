@@ -5,7 +5,7 @@
  * announcements. Restricted to admins so it can't be used to spam the
  * group repeatedly.
  *
- * Usage: !tagall [optional message]
+ * Usage: .tagall [optional message]
  */
 module.exports = {
   name: 'tagall',
@@ -20,12 +20,9 @@ module.exports = {
 
     const metadata = await sock.groupMetadata(jid);
     const senderJid = msg.key.participant || msg.key.remoteJid;
+    const { isSenderAdmin } = require('../utils/isAdmin');
 
-    const isSenderAdmin = metadata.participants.some(
-      (p) => p.id === senderJid && (p.admin === 'admin' || p.admin === 'superadmin')
-    );
-
-    if (!isSenderAdmin) {
+    if (!isSenderAdmin(metadata, senderJid)) {
       await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
       return;
     }

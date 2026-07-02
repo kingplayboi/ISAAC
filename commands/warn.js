@@ -5,8 +5,8 @@
  * the bot automatically removes them from the group (requires the bot
  * to be an admin). Admin-only command.
  *
- * Usage: !warn @user [reason]
- *    or: reply to the target's message with !warn [reason]
+ * Usage: .warn @user [reason]
+ *    or: reply to the target's message with .warn [reason]
  */
 const { addWarning, getWarnings } = require('../utils/warnings');
 
@@ -28,7 +28,7 @@ module.exports = {
     if (!targetJid) {
       await sock.sendMessage(
         jid,
-        { text: '❌ Mention the person to warn, or reply to one of their messages with !warn.' },
+        { text: '❌ Mention the person to warn, or reply to one of their messages with .warn.' },
         { quoted: msg }
       );
       return;
@@ -36,13 +36,9 @@ module.exports = {
 
     const metadata = await sock.groupMetadata(jid);
     const senderJid = msg.key.participant || msg.key.remoteJid;
-    const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+    const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
 
-    const isSenderAdmin = metadata.participants.some(
-      (p) => p.id === senderJid && (p.admin === 'admin' || p.admin === 'superadmin')
-    );
-
-    if (!isSenderAdmin) {
+    if (!isSenderAdmin(metadata, senderJid)) {
       await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
       return;
     }
@@ -53,11 +49,7 @@ module.exports = {
     const remaining = 3 - count;
 
     if (count >= 3) {
-      const isBotAdmin = metadata.participants.some(
-        (p) => p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin')
-      );
-
-      if (isBotAdmin) {
+      if (isBotAdmin(sock, metadata)) {
         await sock.groupParticipantsUpdate(jid, [targetJid], 'remove');
         await sock.sendMessage(
           jid,

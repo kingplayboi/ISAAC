@@ -31,19 +31,19 @@ module.exports = {
       return;
     }
 
-    const metadata = await sock.groupMetadata(jid);
+const metadata = await sock.groupMetadata(jid);
     const senderJid = msg.key.participant || msg.key.remoteJid;
-    const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+    const { isBotAdmin: checkBotAdmin, isSenderAdmin: checkSenderAdmin } = require('../utils/isAdmin');
 
-    const isSenderAdmin = metadata.participants.some(
-      (p) => p.id === senderJid && (p.admin === 'admin' || p.admin === 'superadmin')
-    );
-    const isBotAdmin = metadata.participants.some(
-      (p) => p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin')
-    );
+    const isSenderAdmin = checkSenderAdmin(metadata, senderJid);
+    const isBotAdmin = checkBotAdmin(sock, metadata);
 
-    if (!isSenderAdmin) {
-      await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
+    if (!isBotAdmin) {
+      console.log('[DEBUG isAdmin] sock.user:', JSON.stringify(sock.user));
+      console.log('[DEBUG isAdmin] participants:', JSON.stringify(metadata.participants, null, 2));
+    }
+
+    if (!isSenderAdmin) {      await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
       return;
     }
     if (!isBotAdmin) {
