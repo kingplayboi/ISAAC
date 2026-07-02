@@ -1,0 +1,63 @@
+{
+  "name": "ISAAC-MD",
+  "description": "ISAAC WhatsApp Multi-Device Bot",
+  "logo": "",
+  "repository": "https://github.com/kingplayboi/ISAAC",
+  "keywords": ["whatsapp", "bot", "isaac", "baileys"],
+  "success_url": "/",
+  "buildpacks": [
+    { "url": "https://github.com/heroku/heroku-buildpack-nodejs#latest" }
+  ],
+  "env": {
+    "SESSION_ID": {
+      "description": "Your WhatsApp session string, generated at https://kingpin-sjlx.onrender.com (QR CODE or PAIR CODE)",
+      "value": "",
+      "required": true
+    },
+    "PREFIX": {
+      "description": "Command prefix for the bot",
+      "value": ".",
+      "required": false
+    },
+    "BOT_NAME": {
+      "description": "Display name for the bot",
+      "value": "ISAAC-MD",
+      "required": false
+    },
+    "OWNER_NAME": {
+      "description": "Your name, shown in bot info/menu",
+      "value": "Isaac",
+      "required": false
+    },
+    "OWNER_NUMBER": {
+      "description": "Your WhatsApp number with country code, no + or spaces",
+      "value": "254754574642",
+      "required": true
+    },
+    "STICKER_NAME": {
+      "description": "Pack name used on stickers created by the bot",
+      "value": "ISAAC-MD",
+      "required": false
+    },
+    "AUTO_READ_STATUS": {
+      "description": "Automatically view contacts' WhatsApp statuses (true/false)",
+      "value": "false",
+      "required": false
+    },
+    "AUTO_REACT": {
+      "description": "Automatically react to incoming messages (true/false)",
+      "value": "false",
+      "required": false
+    },
+    "PUBLIC_MODE": {
+      "description": "If true, anyone can use commands. If false, only the owner can (true/false)",
+      "value": "true",
+      "required": false
+    },
+    "TIMEZONE": {
+      "description": "Timezone used for scheduled features",
+      "value": "Africa/Nairobi",
+      "required": false
+    }
+  }
+}
