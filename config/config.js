@@ -8,7 +8,7 @@
 
 module.exports = {
   // The character (or string) that must precede every command.
-  prefix: process.env.PREFIX || '.',
+  prefix: process.env.BOT_PREFIX || '.',
   ownerNumber: process.env.OWNER_NUMBER || '254754574642', // digits only, with country code, no +
 
   // Display name for the bot, used in messages like the !menu command.
