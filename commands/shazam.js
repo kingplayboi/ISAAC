@@ -1,24 +1,20 @@
 /**
  * commands/shazam.js
  * -------------------
- * Identifies a song from a short audio or video clip using the AudD
- * music recognition API, then replies with the track info and links
- * to listen on Spotify / Apple Music.
- *
- * Usage:
- *   Reply to a voice note, audio file, or video with .shazam
- *   OR send a voice note / video directly with .shazam as the caption
+ * Identifies a song from a short audio or video clip using AudD,
+ * then downloads and sends the full audio automatically.
  */
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const https = require('https');
+const yts = require('yt-search');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+
 const execFileAsync = promisify(execFile);
 
-// TODO: move this into config/config.js if you want it out of source control.
 const AUDD_API_TOKEN = '1ad87635d6a7e6e1ad8c2ccbe503d097';
 const AUDD_ENDPOINT = 'https://api.audd.io/';
 
@@ -43,6 +39,7 @@ function extractMediaTarget(msg) {
       },
     };
   }
+
   if (quoted?.videoMessage) {
     return {
       type: 'video',
@@ -62,10 +59,18 @@ function extractMediaTarget(msg) {
 function downloadBuffer(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return downloadBuffer(res.headers.location).then(resolve).catch(reject);
+      if (
+        res.statusCode >= 300 &&
+        res.statusCode < 400 &&
+        res.headers.location
+      ) {
+        return downloadBuffer(res.headers.location)
+          .then(resolve)
+          .catch(reject);
       }
+
       const chunks = [];
+
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => resolve(Buffer.concat(chunks)));
       res.on('error', reject);
@@ -75,101 +80,235 @@ function downloadBuffer(url) {
 
 module.exports = {
   name: 'shazam',
-  description: 'Identifies a song from an audio clip or video and gives you links to listen.',
+  description:
+    'Identifies a song from audio/video and downloads the full track.',
+
   async execute(sock, msg) {
     const jid = msg.key.remoteJid;
     const target = extractMediaTarget(msg);
 
     if (!target) {
-      await sock.sendMessage(
+      return await sock.sendMessage(
         jid,
-        { text: '🎧 Send or reply to a voice note, audio file, or short video with *.shazam* and I\'ll try to identify the song.' },
+        {
+          text:
+            '🎧 Reply to a voice note, audio file, or short video with *.shazam*.',
+        },
         { quoted: msg }
       );
-      return;
     }
 
-    await sock.sendMessage(jid, { react: { text: '🔎', key: msg.key } });
+    await sock.sendMessage(jid, {
+      react: { text: '🔎', key: msg.key },
+    });
 
-    let tmpInput, tmpAudio;
+    let tmpInput;
+    let tmpAudio;
+    let downloadedSong;
+
     try {
       const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
-      const targetMsg = { key: target.key, message: target.message };
+      const targetMsg = {
+        key: target.key,
+        message: target.message,
+      };
+
       const buffer = await downloadMediaMessage(
         targetMsg,
         'buffer',
         {},
-        { reuploadRequest: sock.updateMediaMessage }
+        {
+          reuploadRequest: sock.updateMediaMessage,
+        }
       );
 
       const tmpDir = os.tmpdir();
+
       const ext = target.type === 'video' ? 'mp4' : 'ogg';
-      tmpInput = path.join(tmpDir, `shazam_in_${Date.now()}.${ext}`);
-      tmpAudio = path.join(tmpDir, `shazam_out_${Date.now()}.mp3`);
+
+      tmpInput = path.join(
+        tmpDir,
+        `shazam_in_${Date.now()}.${ext}`
+      );
+
+      tmpAudio = path.join(
+        tmpDir,
+        `shazam_out_${Date.now()}.mp3`
+      );
+
       fs.writeFileSync(tmpInput, buffer);
 
-      // A short sample is plenty for recognition and keeps the upload small.
       await execFileAsync('ffmpeg', [
-        '-y', '-i', tmpInput,
-        '-t', '20',
+        '-y',
+        '-i',
+        tmpInput,
+        '-t',
+        '20',
         '-vn',
-        '-ac', '1',
-        '-ar', '44100',
-        '-f', 'mp3',
+        '-ac',
+        '1',
+        '-ar',
+        '44100',
+        '-f',
+        'mp3',
         tmpAudio,
       ]);
 
       const form = new FormData();
+
       form.append('api_token', AUDD_API_TOKEN);
       form.append('return', 'apple_music,spotify');
-      form.append('file', new Blob([fs.readFileSync(tmpAudio)]), 'sample.mp3');
+      form.append(
+        'file',
+        new Blob([fs.readFileSync(tmpAudio)]),
+        'sample.mp3'
+      );
 
-      const response = await fetch(AUDD_ENDPOINT, { method: 'POST', body: form });
+      const response = await fetch(AUDD_ENDPOINT, {
+        method: 'POST',
+        body: form,
+      });
+
       const data = await response.json();
 
       if (data.status !== 'success' || !data.result) {
-        await sock.sendMessage(
+        return await sock.sendMessage(
           jid,
-          { text: "😕 Couldn't identify that track. Try a clearer or longer clip." },
+          {
+            text:
+              "😕 Couldn't identify that track. Try a clearer clip.",
+          },
           { quoted: msg }
         );
-        return;
       }
 
       const r = data.result;
-      const spotifyUrl = r.spotify?.external_urls?.spotify;
-      const appleUrl = r.apple_music?.url;
+
+      const spotifyUrl =
+        r.spotify?.external_urls?.spotify;
+
+      const appleUrl =
+        r.apple_music?.url;
+
       const albumArt =
         r.spotify?.album?.images?.[0]?.url ||
-        r.apple_music?.artwork?.url?.replace('{w}x{h}', '500x500');
+        r.apple_music?.artwork?.url?.replace(
+          '{w}x{h}',
+          '500x500'
+        );
 
-      const captionLines = [
+      const caption = [
         `🎵 *${r.title}*`,
         `👤 *Artist:* ${r.artist}`,
         r.album ? `💿 *Album:* ${r.album}` : null,
-        r.release_date ? `📅 *Released:* ${r.release_date}` : null,
-        spotifyUrl ? `🟢 *Spotify:* ${spotifyUrl}` : null,
-        appleUrl ? `🍎 *Apple Music:* ${appleUrl}` : null,
-      ].filter(Boolean);
-      const caption = captionLines.join('\n');
+        r.release_date
+          ? `📅 *Released:* ${r.release_date}`
+          : null,
+        spotifyUrl
+          ? `🟢 *Spotify:* ${spotifyUrl}`
+          : null,
+        appleUrl
+          ? `🍎 *Apple Music:* ${appleUrl}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join('\n');
 
       if (albumArt) {
-        const imgBuffer = await downloadBuffer(albumArt);
-        await sock.sendMessage(jid, { image: imgBuffer, caption }, { quoted: msg });
+        const img = await downloadBuffer(albumArt);
+
+        await sock.sendMessage(
+          jid,
+          {
+            image: img,
+            caption,
+          },
+          { quoted: msg }
+        );
       } else {
-        await sock.sendMessage(jid, { text: caption }, { quoted: msg });
+        await sock.sendMessage(
+          jid,
+          { text: caption },
+          { quoted: msg }
+        );
       }
-    } catch (error) {
+
+      // DOWNLOAD FULL SONG
+      const query = `${r.title} ${r.artist}`;
+
       await sock.sendMessage(
         jid,
-        { text: `⚠️ Something went wrong identifying the song: ${error.message}` },
+        {
+          text: `🎧 Downloading *${query}*...`,
+        },
+        { quoted: msg }
+      );
+
+      const search = await yts(query);
+
+      const video = search.videos[0];
+
+      if (!video) {
+        throw new Error(
+          'Could not find the song on YouTube.'
+        );
+      }
+
+      const outputTemplate = path.join(
+        tmpDir,
+        `shazam_song_${Date.now()}.%(ext)s`
+      );
+
+      await execFileAsync('yt-dlp', [
+        '--js-runtimes',
+        'node',
+        '-x',
+        '--audio-format',
+        'mp3',
+        '--audio-quality',
+        '0',
+        '--no-playlist',
+        '-o',
+        outputTemplate,
+        video.url,
+      ]);
+
+      downloadedSong = outputTemplate.replace(
+        '%(ext)s',
+        'mp3'
+      );
+
+      if (!fs.existsSync(downloadedSong)) {
+        throw new Error('Downloaded song not found.');
+      }
+
+      await sock.sendMessage(
+        jid,
+        {
+          audio: fs.readFileSync(downloadedSong),
+          mimetype: 'audio/mpeg',
+          fileName: `${r.title}.mp3`,
+          ptt: false,
+        },
+        { quoted: msg }
+      );
+    } catch (error) {
+      console.error('[SHAZAM ERROR]', error);
+
+      await sock.sendMessage(
+        jid,
+        {
+          text: `⚠️ ${error.message}`,
+        },
         { quoted: msg }
       );
     } finally {
-      [tmpInput, tmpAudio].forEach((f) => {
+      [tmpInput, tmpAudio, downloadedSong].forEach((f) => {
         if (f && fs.existsSync(f)) {
-          try { fs.unlinkSync(f); } catch {}
+          try {
+            fs.unlinkSync(f);
+          } catch {}
         }
       });
     }
