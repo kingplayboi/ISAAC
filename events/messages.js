@@ -12,6 +12,7 @@
  *      single bad command never crashes the whole bot.
  */
 
+const { proto, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const config = require('../config/config');
 const logger = require('../utils/logger');
 
@@ -53,14 +54,141 @@ function registerMessageHandler(sock, commands) {
       try {
         // 1. Skip completely if there's no actual message body structure
         if (!msg.message) continue;
-        if (config.AUTO_TYPING) {
-            await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
-        }
+
+          // Auto-view WhatsApp statuses (defaults to ON)
+            if (msg.key.remoteJid === 'status@broadcast') {
+              const settingsStore = require('../utils/settingsStore');
+              if (settingsStore.get('autoview', true)) {
+                try {
+                  await sock.readMessages([msg.key]);
+                } catch (e) {
+                  logger.error(`[autoview] Failed to mark status viewed: ${e.message}`);
+                }
+              }
+              continue;
+            }
+
+            // Antidelete: detect revoked (deleted) messages and resend cached content
+            if (msg.message.protocolMessage?.type === proto.Message.ProtocolMessage.Type.REVOKE) {
+              const settingsStore = require('../utils/settingsStore');
+              if (settingsStore.get('antidelete', false)) {
+                const messageCache = require('../utils/messageCache');
+                const originalKey = msg.message.protocolMessage.key;
+                const cached = messageCache.get(msg.key.remoteJid, originalKey?.id);
+
+                if (cached) {
+                  try {
+                    const senderTag = cached.senderJid ? `@${cached.senderJid.split('@')[0]}` : 'someone';
+                    const header = `🗑️ *Antidelete* — ${senderTag} deleted a message:`;
+
+                    if (cached.type === 'text') {
+                      await sock.sendMessage(msg.key.remoteJid, {
+                        text: `${header}\n\n${cached.text}`,
+                        mentions: cached.senderJid ? [cached.senderJid] : [],
+                      });
+                    } else if (cached.type === 'image' || cached.type === 'video') {
+                      const buffer = await downloadMediaMessage({ message: cached.rawMessage }, 'buffer', {});
+                      const payload = cached.type === 'image' ? { image: buffer } : { video: buffer };
+                      await sock.sendMessage(msg.key.remoteJid, {
+                        ...payload,
+                        caption: `${header}${cached.text ? '\n\n' + cached.text : ''}`,
+                        mentions: cached.senderJid ? [cached.senderJid] : [],
+                      });
+                    }
+                  } catch (e) {
+                    logger.error(`[antidelete] Failed to resend deleted message: ${e.message}`);
+                  }
+                }
+              }
+              continue;
+            }
+
+            // Cache this message's content in case it gets deleted later
+            try {
+              const messageCache = require('../utils/messageCache');
+              const senderJid = msg.key.participant || msg.key.remoteJid;
+              const m = msg.message;
+
+              if (m.imageMessage) {
+                messageCache.set(msg.key.remoteJid, msg.key.id, {
+                  type: 'image',
+                  text: m.imageMessage.caption || '',
+                  rawMessage: { imageMessage: m.imageMessage },
+                  senderJid,
+                });
+              } else if (m.videoMessage) {
+                messageCache.set(msg.key.remoteJid, msg.key.id, {
+                  type: 'video',
+                  text: m.videoMessage.caption || '',
+                  rawMessage: { videoMessage: m.videoMessage },
+                  senderJid,
+                });
+              } else {
+                const plainText = m.conversation || m.extendedTextMessage?.text || '';
+                if (plainText) {
+                  messageCache.set(msg.key.remoteJid, msg.key.id, { type: 'text', text: plainText, senderJid });
+                }
+              }
+            } catch (e) {
+              logger.error(`[antidelete cache] ${e.message}`);
+            }
+
+          if (config.AUTO_TYPING) {
+              await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
+          }
         if (config.AUTO_RECORDING) {
             await sock.sendPresenceUpdate('recording', msg.key.remoteJid);
         }
 
         const text = extractMessageText(msg.message).trim();
+if (!text) continue;
+
+          // Antilink: detect + delete links + kick sender when enabled for this group
+          if (msg.key.remoteJid.endsWith('@g.us')) {
+            const fs = require('fs');
+            const path = require('path');
+            const settingsPath = path.join(__dirname, '../config/groupSettings.json');
+
+            let antilinkOn = false;
+            if (fs.existsSync(settingsPath)) {
+              const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+              antilinkOn = settings[msg.key.remoteJid]?.antilink === true;
+            }
+
+            const linkRegex = /(https?:\/\/|www\.|chat\.whatsapp\.com\/|wa\.me\/)\S+/i;
+
+            if (antilinkOn && linkRegex.test(text)) {
+              const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
+              const metadata = await sock.groupMetadata(msg.key.remoteJid);
+              const senderJid = msg.key.participant || msg.key.remoteJid;
+
+              // Never delete/kick admins for posting a link
+              if (!isSenderAdmin(metadata, senderJid)) {
+                if (isBotAdmin(sock, metadata)) {
+                  try {
+                    await sock.sendMessage(msg.key.remoteJid, { delete: msg.key });
+                  } catch (e) {
+                    logger.error(`[antilink] Failed to delete message: ${e.message}`);
+                  }
+
+                  try {
+                    await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
+                    await sock.sendMessage(
+                      msg.key.remoteJid,
+                      { text: `🔗🚫 @${senderJid.split('@')[0]} kicked for sending a link.`, mentions: [senderJid] }
+                    );
+                  } catch (e) {
+                    logger.error(`[antilink] Failed to kick sender: ${e.message}`);
+                    await sock.sendMessage(
+                      msg.key.remoteJid,
+                      { text: `🔗 Link deleted from @${senderJid.split('@')[0]}, but I couldn't remove them.`, mentions: [senderJid] }
+                    );
+                  }
+                }
+                continue;
+              }
+            }
+          }
 
 console.log('TEXT RECEIVED =', JSON.stringify(text));
 console.log('PREFIX =', JSON.stringify(config.prefix));

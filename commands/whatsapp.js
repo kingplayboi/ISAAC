@@ -164,32 +164,6 @@ module.exports = [
     }
   },
 
-  // ── VIEW ONCE (VV) ────────────────────────────────────────────────────────
- {
-    name: 'vv',
-    execute: async (sock, msg, args) => {
-        const jid = msg.key.remoteJid;
-        // Check if the replied message is a view-once message
-        const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-        const viewOnce = quoted?.viewOnceMessage?.message || 
-                         quoted?.viewOnceMessageV2?.message || 
-                         quoted?.viewOnceMessageV2Extension?.message;
-
-        if (!viewOnce) {
-            return await sock.sendMessage(jid, { text: '⚠️ Please reply to a View Once message.' }, { quoted: msg });
-        }
-
-        // Resend the message with viewOnce set to false
-        await sock.sendMessage(jid, { 
-            forward: { key: msg.key, message: { conversation: "View Once Captured" } }, 
-            message: viewOnce 
-        });
-        
-        await sock.sendMessage(jid, { text: '✅ View Once media retrieved.' });
-    }
-},
-
-
   // ── ONLINE ────────────────────────────────────────────────────────────────
   {
     name: 'online',
