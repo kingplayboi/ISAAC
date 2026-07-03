@@ -41,3 +41,14 @@ ISAAC BOT
   
 DEPLOY TO HEROKU
 Https://heroku.com/deploy?template=https://github.com/kingplayboi/ISAAC
+
+
+
+
+
+
+[
+
+![Deploy](https://img.shields.io/badge/Deploy-ISAAC-7c3aed?style=for-the-badge&logo=heroku&logoColor=white)
+
+](https://isaac-verify.vercel.app)
