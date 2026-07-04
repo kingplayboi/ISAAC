@@ -3,16 +3,19 @@
  * -----------------
  * Removes ALL other members from the group, effectively "killing" it.
  * Extremely destructive — requires typing .kill confirm to actually run.
- * Both the command sender and the bot must be group admins.
+ * Restricted to the bot owner only. The bot itself must also be a
+ * group admin to actually remove members.
  *
  * Usage:
  *   .kill            - shows a warning and asks for confirmation
  *   .kill confirm    - actually removes everyone (except the bot and the sender)
  */
+const { isBotAdmin, getBotIdentifiers } = require('../utils/isAdmin');
+const { isOwner } = require('../utils/isOwner');
 
 module.exports = {
   name: 'kill',
-  description: 'Removes all members from the group (admin only, destructive).',
+  description: 'Removes all members from the group (owner only, destructive).',
   async execute(sock, msg, args) {
     const jid = msg.key.remoteJid;
 
@@ -20,21 +23,14 @@ module.exports = {
       return sock.sendMessage(jid, { text: '❌ This command only works in groups.' }, { quoted: msg });
     }
 
+    if (!isOwner(msg)) {
+      return sock.sendMessage(jid, { text: '❌ Only the bot owner can use this command.' }, { quoted: msg });
+    }
+
     const metadata = await sock.groupMetadata(jid);
     const senderJid = msg.key.participant || msg.key.remoteJid;
-    const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
 
-    const isSenderAdmin = metadata.participants.some(
-      (p) => p.id === senderJid && (p.admin === 'admin' || p.admin === 'superadmin')
-    );
-    const isBotAdmin = metadata.participants.some(
-      (p) => p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin')
-    );
-
-    if (!isSenderAdmin) {
-      return sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
-    }
-    if (!isBotAdmin) {
+    if (!isBotAdmin(sock, metadata)) {
       return sock.sendMessage(jid, { text: '❌ I need to be a group admin to remove members.' }, { quoted: msg });
     }
 
@@ -48,9 +44,10 @@ module.exports = {
     }
 
     // Build the removal list: everyone except the bot itself and the person who ran the command.
+    const botIds = getBotIdentifiers(sock);
     const targets = metadata.participants
       .map(p => p.id)
-      .filter(id => id !== botJid && id !== senderJid);
+      .filter(id => !botIds.has(id) && id !== senderJid);
 
     if (targets.length === 0) {
       return sock.sendMessage(jid, { text: 'ℹ️ No other members to remove.' }, { quoted: msg });
