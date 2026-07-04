@@ -51,15 +51,15 @@ const categories = {
     'DOWNLOAD': ['download', 'spotify', 'play', 'tiktok', 'ig', 'fb', 'twitter'],
     'GAMES': ['game', 'tictactoe', 'move', 'ttend', 'rps', 'wordguess', 'guess', 'wgend', 'mathquiz', 'mans', 'answer'],
     'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'vv', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],
-    'AI': ['gemini', 'groq', 'gpt', 'dall', 'bing', 'upscale', 'lydia'],
+    'AI': ['gemini', 'groq', 'gpt', 'dall', 'bing', 'upscale', 'lydia', 'vision'],
     'SECURITY': ['antifake', 'antigm', 'antigstatus', 'antispam', 'antiword', 'common', 'gpp', 'gstatus'],
     'USER': ['block', 'unblock', 'pp', 'fullpp', 'jid', 'gjid', 'left'],
-    'OWNER': ['owner', 'kill', 'backup', 'reminder', 'task', 'tog', 'update', 'updatenow'],
+    'OWNER': ['owner', 'kill', 'backup', 'reminder', 'task', 'tog', 'update', 'updatenow', 'eval'],
     'TOOLS': ['webscan'],
     'LIVESCORE': ['livescore', 'table'],
     'CODING': ['enc', 'gpass', 'compile-py', 'compile-js', 'compile-c', 'compile-c++'],
     'CONVERTER': ['topdf', 'toexcel', 'toword', 'tovideo', 'toaudio', 'toimg', 'ocr', 'totext', 'carbon'],
-    'MISC': ['isaac', 'script', 'calc', 'alive', 'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats', 'shazam', 'uptime']
+    'MISC': ['isaac', 'script', 'calc', 'alive', 'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats', 'shazam', 'uptime', 'lyrics'],
 };        for (const [categoryName, commandList] of Object.entries(categories)) {
             menuMessage += ` ╭─❏ ${categoryName} ❏\n`;
             commandList.forEach(cmd => {
