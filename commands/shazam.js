@@ -12,6 +12,7 @@ const https = require('https');
 const yts = require('yt-search');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const ffmpegPath = process.env.FFMPEG_PATH || require('ffmpeg-static') || 'ffmpeg';
 
 const execFileAsync = promisify(execFile);
 
@@ -139,7 +140,7 @@ module.exports = {
 
       fs.writeFileSync(tmpInput, buffer);
 
-      await execFileAsync('ffmpeg', [
+      await execFileAsync(ffmpegPath, [
         '-y',
         '-i',
         tmpInput,
