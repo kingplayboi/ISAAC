@@ -2,7 +2,7 @@ ISAAC BOT
 
 <p align="center">
   <img
-    src="https://github.com/user-attachments/assets/29486bcb-8839-42df-8d87-01e60a780f0f"
+    src="https://github.com/user-attachments/assets/db59afdd-3fe9-488d-bdb4-5c2648239ee0"
     alt="ISAAC Banner"
     width="100%"
   />
