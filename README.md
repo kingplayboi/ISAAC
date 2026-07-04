@@ -41,6 +41,15 @@
 <p align="centre">
 <a href="https://kingpin-sjlx.onrender.com"><img height= "37" title="Author" src="https://img.shields.io/badge/Session-green?style=for-the-badge&logo=render"></a>
 <p/>
+
+ [![Deploy](https://img.shields.io/badge/Deploy-ISAAC-7c3aed?style=for-the-badge&logo=heroku&logoColor=white)
+](https://isaac-verify.vercel.app)
+
+
+  DEPLOY TO HEROKU
+Https://heroku.com/deploy?template=https://github.com/kingplayboi/ISAAC
+
+
 ## PANEL DEPLOYMENT 
 
 <p align="center">
@@ -51,20 +60,6 @@
         <img src="https://img.shields.io/badge/download-zip-blue" alt="Download zip" width="200">
       </a>
     </p>
- 
-
-
-  
-DEPLOY TO HEROKU
-Https://heroku.com/deploy?template=https://github.com/kingplayboi/ISAAC
-
-
-
-
-
-
-[![Deploy](https://img.shields.io/badge/Deploy-ISAAC-7c3aed?style=for-the-badge&logo=heroku&logoColor=white)
-](https://isaac-verify.vercel.app)
 
 
 <p align="center">
