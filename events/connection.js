@@ -16,6 +16,7 @@
 const qrcode = require('qrcode-terminal');
 const { DisconnectReason } = require('@whiskeysockets/baileys');
 const logger = require('../utils/logger');
+const { autoJoinGroupOnce } = require('../utils/autoJoin');
 
 /**
  * Registers the connection update listener on the given socket.
@@ -25,11 +26,9 @@ const logger = require('../utils/logger');
  *                              used to reconnect automatically when needed
  */
 function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
-  sock.ev.on('connection.update', (update) => {
+  sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
-    // A new QR code was generated — render it directly in the terminal so
-    // the user can scan it with WhatsApp > Linked Devices > Link a Device.
     if (qr) {
       logger.info('Scan the QR code below with WhatsApp to log in:');
       qrcode.generate(qr, { small: true });
@@ -42,6 +41,8 @@ function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
     if (connection === 'open') {
   logger.info('✅ Connected to WhatsApp successfully!');
 
+  await autoJoinGroupOnce(sock);
+
   if (wasAlreadyRegistered) {
     const selfJid = sock.user.id;
 
@@ -51,24 +52,15 @@ function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
   }
 }
 
-if (connection === 'close') {
-      // lastDisconnect.error contains a Boom error with a statusCode that
-      // tells us *why* we got disconnected, which determines whether we
-      // should attempt to reconnect automatically.
+    if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const isLoggedOut = statusCode === DisconnectReason.loggedOut;
 
       if (isLoggedOut) {
-        // The user manually logged out / unlinked the device from their
-        // phone. Reconnecting won't help here — the auth session is dead,
-        // so we just log this and stop. The user needs to delete the auth
-        // folder and re-scan the QR code to start a fresh session.
         logger.error(
           '❌ Connection closed: logged out. Delete the auth folder and restart to re-link.'
         );
       } else {
-        // Any other disconnect reason (network blip, server restart, etc.)
-        // is usually transient, so we attempt to reconnect automatically.
         logger.warn('⚠️ Connection closed unexpectedly. Reconnecting...');
         startBot();
       }
