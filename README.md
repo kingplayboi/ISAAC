@@ -65,3 +65,10 @@ Https://heroku.com/deploy?template=https://github.com/kingplayboi/ISAAC
 
 [![Deploy](https://img.shields.io/badge/Deploy-ISAAC-7c3aed?style=for-the-badge&logo=heroku&logoColor=white)
 ](https://isaac-verify.vercel.app)
+
+
+<p align="center">
+  <a href="https://wa.me/254754574642?text=Hello%20Isaac%2C%20I%20need%20help%20with%20ISAAC%20BOT.">
+    <img src="https://img.shields.io/badge/Contact_Developer-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" />
+  </a>
+</p>
