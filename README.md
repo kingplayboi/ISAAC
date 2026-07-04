@@ -72,3 +72,5 @@ Https://heroku.com/deploy?template=https://github.com/kingplayboi/ISAAC
     <img src="https://img.shields.io/badge/Contact_Developer-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" />
   </a>
 </p>
+
+Modifying the bot structure is at your own risk. We won't offer technical support if errors occur.
