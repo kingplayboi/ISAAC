@@ -17,4 +17,7 @@ npm-debug.log*
 Thumbs.db
 .env
 data/
+# Bot-generated files
+config/groupSettings.json
+commands/*.mp3
 
