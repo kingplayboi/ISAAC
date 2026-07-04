@@ -41,10 +41,13 @@
 <p align="centre">
 <a href="https://kingpin-sjlx.onrender.com"><img height= "37" title="Author" src="https://img.shields.io/badge/Session-green?style=for-the-badge&logo=render"></a>
 <p/>
+  
+## ` Deploy to heroku (1)`
 
  [![Deploy](https://img.shields.io/badge/Deploy-ISAAC-7c3aed?style=for-the-badge&logo=heroku&logoColor=white)
 ](https://isaac-verify.vercel.app)
 
+## ` Deploy to heroku (2)`
 <p align="center">
   <a href="https://heroku.com/deploy?template=https://github.com/kingplayboi/ISAAC">
     <img src="https://www.herokucdn.com/deploy/button.svg" alt="Deploy to Heroku">
