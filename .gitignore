@@ -8,6 +8,7 @@ auth_info_baileys/
 # Logs
 *.log
 npm-debug.log*
+log.txt
 
 # Environment variables
 .env
