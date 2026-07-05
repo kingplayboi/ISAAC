@@ -1,4 +1,5 @@
 globalThis.crypto = require('node:crypto').webcrypto;
+require('dotenv').config();
 /**
  * index.js
  * --------

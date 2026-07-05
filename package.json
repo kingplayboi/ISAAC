@@ -34,6 +34,7 @@
     "qrcode-terminal": "^0.12.0",
     "socket.io": "^4.8.3",
     "xlsx": "^0.18.5",
+    "youtube-dl-exec": "^3.1.8",
     "yt-search": "^2.13.1",
     "ytdl-core": "^4.11.5"
   },
@@ -44,7 +45,9 @@
     "node": ">=18.0.0"
   },
   "allowScripts": {
-    "@whiskeysockets/baileys@6.7.22": true,
-    "protobufjs@7.6.4": true
+    "protobufjs@7.6.4": true,
+    "@whiskeysockets/baileys@6.7.23": true,
+    "ffmpeg-static@5.3.0": true,
+    "youtube-dl-exec@3.1.8": true
   }
 }

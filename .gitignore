@@ -22,3 +22,4 @@ data/
 config/groupSettings.json
 commands/*.mp3
 
+.env

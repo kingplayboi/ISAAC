@@ -1,14 +1,15 @@
 /**
  * commands/song.js
  * ------------------
- * Download a song from YouTube by search query.
- * Usage: .song <song name>
- *
- * Requires: npm install yt-search ytdl-core
+ * Downloads a song from YouTube using youtube-dl-exec (bundles its own
+ * yt-dlp binary via npm postinstall). Works on Termux and Heroku with
+ * no manual setup beyond `npm install` — the binary comes with git push.
  */
 
 const yts = require('yt-search');
-const ytdl = require('ytdl-core');
+const youtubedl = require('youtube-dl-exec');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
   name: 'song',
@@ -32,15 +33,26 @@ module.exports = {
 
       await sock.sendMessage(jid, { text: `⏳ Downloading: ${video.title} (${video.timestamp})` }, { quoted: msg });
 
-      const chunks = [];
-      await new Promise((resolve, reject) => {
-        ytdl(video.url, { filter: 'audioonly', quality: 'highestaudio' })
-          .on('data', (c) => chunks.push(c))
-          .on('end', resolve)
-          .on('error', reject);
+      const filePath = path.join(__dirname, `${Date.now()}.mp3`);
+      const url = `https://www.youtube.com/watch?v=${video.videoId}`;
+
+      await youtubedl(url, {
+        extractAudio: true,
+        audioFormat: 'mp3',
+        output: filePath,
+        format: 'bestaudio',
       });
 
-      const buffer = Buffer.concat(chunks);
+      if (!fs.existsSync(filePath)) {
+        return sock.sendMessage(jid, { text: '❌ Download failed' }, { quoted: msg });
+      }
+
+      const buffer = fs.readFileSync(filePath);
+
+      if (buffer.length < 1000) {
+        fs.unlinkSync(filePath);
+        return sock.sendMessage(jid, { text: '❌ Empty audio file' }, { quoted: msg });
+      }
 
       await sock.sendMessage(jid, {
         audio: buffer,
@@ -48,6 +60,8 @@ module.exports = {
         fileName: `${video.title}.mp3`,
         caption: `🎵 *${video.title}*\n⏱ ${video.timestamp} | 👁 ${video.views}`
       }, { quoted: msg });
+
+      fs.unlinkSync(filePath);
     } catch (e) {
       await sock.sendMessage(jid, { text: '❌ Song download failed: ' + e.message }, { quoted: msg });
     }
