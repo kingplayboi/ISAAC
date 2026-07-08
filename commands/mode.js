@@ -1,4 +1,5 @@
 const config = require('../config/config');
+const runtimeSettings = require('../config/runtimeSettings');
 
 module.exports = {
     name: 'mode',
@@ -8,6 +9,7 @@ module.exports = {
 
         if (args[0] === 'public' || args[0] === 'private') {
             config.WORK_TYPE = args[0];
+            runtimeSettings.set('mode', args[0]);
             return await sock.sendMessage(msg.key.remoteJid, { 
                 text: `🔒 *Work Mode updated:* Bot is now set to *${config.WORK_TYPE}*` 
             });

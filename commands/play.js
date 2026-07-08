@@ -83,18 +83,35 @@ module.exports = {
         throw new Error("Downloaded file is empty");
       }
 
+      const audioBuffer = fs.readFileSync(outputFile);
+      const fileName = `${video.title}.mp3`;
+
+      // Send as playable audio first
       await sock.sendMessage(
         chatId,
         {
-          audio: fs.readFileSync(outputFile),
+          audio: audioBuffer,
           mimetype: "audio/mpeg",
-          fileName: `${video.title}.mp3`,
+          fileName,
           ptt: false
         },
         { quoted: msg }
       );
 
       console.log("[PLAY] Audio sent successfully");
+
+      // Then send the exact same file again as a downloadable document
+      await sock.sendMessage(
+        chatId,
+        {
+          document: audioBuffer,
+          mimetype: "audio/mpeg",
+          fileName
+        },
+        { quoted: msg }
+      );
+
+      console.log("[PLAY] Document sent successfully");
 
     } catch (err) {
       console.error("[PLAY ERROR]", err);

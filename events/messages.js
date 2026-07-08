@@ -265,6 +265,15 @@ console.log('ARGS =', args);
           continue;
         }
 
+        // Enforce private mode: when config.WORK_TYPE is 'private', only
+        // the owner (messages sent from the bot's own linked number) can
+        // run commands. Everyone else is silently ignored, matching the
+        // existing "unknown command" behavior above rather than replying
+        // and confirming the bot's presence to non-owners.
+        if (config.WORK_TYPE === 'private' && !msg.key.fromMe) {
+          continue;
+        }
+
         // Execute the matched command. We pass the full `commands` map too,
         // since some commands (like !help) need to see every other command.
         await command.execute(sock, msg, args, commands);

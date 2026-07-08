@@ -14,7 +14,10 @@
  */
 
 const qrcode = require('qrcode-terminal');
-const { DisconnectReason } = require('@whiskeysockets/baileys');
+const fs = require('fs');
+const path = require('path');
+const { DisconnectReason, jidNormalizedUser } = require('@whiskeysockets/baileys');
+const config = require('../config/config');
 const logger = require('../utils/logger');
 const { autoJoinGroupOnce } = require('../utils/autoJoin');
 
@@ -41,14 +44,45 @@ function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
     if (connection === 'open') {
   logger.info('✅ Connected to WhatsApp successfully!');
 
-  await autoJoinGroupOnce(sock);
+  try {
+    await autoJoinGroupOnce(sock);
 
-  if (wasAlreadyRegistered) {
-    const selfJid = sock.user.id;
+    const selfJid = sock.user?.id ? jidNormalizedUser(sock.user.id) : null;
 
-    sock.sendMessage(selfJid, {
-      text: '🤖 *ISAAC-MD has started running*',
-    }).catch((err) => logger.error('Failed to send startup message:', err));
+    if (!selfJid) {
+      logger.warn('[connection] sock.user not available yet — skipping startup/session-backup message this time.');
+    } else {
+      // Always send the startup message, whether this is a fresh pairing
+      // or a reconnect using an existing session.
+      await sock.sendMessage(selfJid, {
+        text: '🤖 *ISAAC-MD has started running*',
+      }).catch((err) => logger.error('Failed to send startup message:', err));
+
+      if (!wasAlreadyRegistered) {
+        // First-ever pairing on this device (fresh QR scan or pairing code) —
+        // additionally back up the session as a portable SESSION_ID and DM
+        // it to the owner's own WhatsApp. That way, if this server's
+        // storage is ever wiped or you move hosts, you can reconnect by
+        // pasting this value into the SESSION_ID environment variable
+        // instead of re-pairing.
+        const credsPath = path.join(__dirname, '..', config.authFolder, 'creds.json');
+
+        if (fs.existsSync(credsPath)) {
+          const credsBuffer = fs.readFileSync(credsPath);
+          const sessionId = `ISAAC-MD:~${credsBuffer.toString('base64')}`;
+
+          await sock.sendMessage(selfJid, {
+            text: `✅ *ISAAC-MD linked successfully!*\n\n🔐 *Session Backup*\nSave this somewhere safe. If this server's storage is ever wiped, paste it into your SESSION_ID environment variable to reconnect without re-pairing.\n\n⚠️ Treat this like a password — anyone with it can fully control this WhatsApp account. Never share it publicly.\n\n${sessionId}`,
+          });
+
+          logger.info('✅ Session backup sent to your own WhatsApp number.');
+        } else {
+          logger.warn('[sessionBackup] creds.json not found yet — skipping session backup message.');
+        }
+      }
+    }
+  } catch (error) {
+    logger.error(`[connection open] Failed during post-connect steps: ${error.message}`);
   }
 }
 
