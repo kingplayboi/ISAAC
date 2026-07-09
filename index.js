@@ -17,6 +17,8 @@ require('dotenv').config();
 
 const path = require('path');
 const NodeCache = require('node-cache');
+const figlet = require('figlet');
+const chalk = require('chalk');
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -80,6 +82,18 @@ const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
  * Initializes (or re-initializes, on reconnect) the WhatsApp socket
  * connection and wires up all event listeners.
  */
+function printBanner() {
+  console.log(
+    chalk.green(
+      figlet.textSync('ISAAC-MD', {
+        font: 'Standard',
+        horizontalLayout: 'default',
+        verticalLayout: 'default',
+      })
+    )
+  );
+  console.log(chalk.cyan('🤖 ISAAC-MD is starting up...'));
+}
 async function startBot() {
   try {
     // useMultiFileAuthState persists login credentials to disk (in the
@@ -215,4 +229,5 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // Kick everything off.
+printBanner();
 startBot();

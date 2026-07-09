@@ -87,18 +87,46 @@ function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
 }
 
     if (connection === 'close') {
-      const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+    const statusCode = lastDisconnect?.error?.output?.statusCode;
 
-      if (isLoggedOut) {
-        logger.error(
-          '❌ Connection closed: logged out. Delete the auth folder and restart to re-link.'
-        );
-      } else {
-        logger.warn('⚠️ Connection closed unexpectedly. Reconnecting...');
+    switch (statusCode) {
+      case DisconnectReason.badSession:
+        logger.error('❌ Bad session file. Delete the auth folder and restart to re-link.');
+        break;
+
+      case DisconnectReason.loggedOut:
+        logger.error('❌ Device logged out. Delete the auth folder / SESSION_ID and re-scan to re-link.');
+        break;
+
+      case DisconnectReason.connectionReplaced:
+        logger.error('❌ Connection replaced — another session was opened elsewhere. Not auto-reconnecting.');
+        break;
+
+      case DisconnectReason.connectionClosed:
+        logger.warn('⚠️ Connection closed. Reconnecting...');
         startBot();
-      }
+        break;
+
+      case DisconnectReason.connectionLost:
+        logger.warn('⚠️ Connection lost from server. Reconnecting...');
+        startBot();
+        break;
+
+      case DisconnectReason.restartRequired:
+        logger.warn('🔄 Restart required by WhatsApp. Reconnecting...');
+        startBot();
+        break;
+
+      case DisconnectReason.timedOut:
+        logger.warn('⚠️ Connection timed out. Reconnecting...');
+        startBot();
+        break;
+
+      default:
+        logger.warn(`⚠️ Connection closed (reason: ${statusCode || 'unknown'}). Reconnecting...`);
+        startBot();
     }
+  }
   });
 }
 
