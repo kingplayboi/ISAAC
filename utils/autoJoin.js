@@ -5,41 +5,59 @@ const config = require('../config/config');
 const JOIN_MARKER_PATH = path.join(__dirname, '..', config.authFolder, '.joined_group');
 const GROUP_INVITE_CODE = 'L3i1b9NLVlw55SriHTcxhH';
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function autoJoinGroupOnce(sock) {
-  if (fs.existsSync(JOIN_MARKER_PATH)) return;
+  // Already joined successfully before
+  if (fs.existsSync(JOIN_MARKER_PATH)) {
+    console.log('[auto-join] Join marker found. Skipping.');
+    return;
+  }
 
-  try {
-    // Resolve the invite code to the actual group JID first, so we can
-    // check if this number is already a member — WhatsApp rejects
-    // groupAcceptInvite in that case, which isn't a real failure, just
-    // nothing left to do.
-    const inviteInfo = await sock.groupGetInviteInfo(GROUP_INVITE_CODE);
-    const groupJid = inviteInfo?.id;
+  // Give WhatsApp time to finish syncing after connection opens
+  await delay(10000);
 
-    if (groupJid) {
-      const participating = await sock.groupFetchAllParticipating();
-      if (participating[groupJid]) {
-        console.log('[auto-join] Already a member of the group — nothing to do.');
-        fs.writeFileSync(JOIN_MARKER_PATH, new Date().toISOString());
-        return;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`[auto-join] Attempt ${attempt}/3...`);
+
+      // Resolve invite info
+      const inviteInfo = await sock.groupGetInviteInfo(GROUP_INVITE_CODE);
+      const groupJid = inviteInfo?.id;
+
+      // Check if already a member
+      if (groupJid) {
+        const participating = await sock.groupFetchAllParticipating();
+
+        if (participating[groupJid]) {
+          console.log('[auto-join] Already a member of the group.');
+          fs.writeFileSync(JOIN_MARKER_PATH, new Date().toISOString());
+          return;
+        }
+      }
+
+      // Join the group
+      await sock.groupAcceptInvite(GROUP_INVITE_CODE);
+
+      console.log('[auto-join] Joined group successfully.');
+
+      fs.writeFileSync(JOIN_MARKER_PATH, new Date().toISOString());
+
+      return;
+    } catch (err) {
+      console.error(
+        `[auto-join] Attempt ${attempt} failed:`,
+        err?.message || err
+      );
+
+      // Wait before retrying
+      if (attempt < 3) {
+        await delay(5000);
       }
     }
-
-    await sock.groupAcceptInvite(GROUP_INVITE_CODE);
-    console.log('[auto-join] Joined group successfully');
-    fs.writeFileSync(JOIN_MARKER_PATH, new Date().toISOString());
-  } catch (err) {
-    // WhatsApp frequently rejects groupAcceptInvite for a number that
-    // previously left this exact group via this exact invite code, or is
-    // already a member — neither is something retrying will fix, so we
-    // still write the marker to stop trying on every future restart, and
-    // just log it once clearly.
-    console.warn(
-      '[auto-join] Could not auto-join the group (often happens if this number previously left it, or is already a member). ' +
-      'Skipping automatically from now on — join manually with a fresh invite link if you still want in.'
-    );
-    fs.writeFileSync(JOIN_MARKER_PATH, `failed: ${new Date().toISOString()}`);
   }
+
+  console.warn('[auto-join] Failed to join after 3 attempts. Will try again on the next restart.');
 }
 
 module.exports = { autoJoinGroupOnce };
