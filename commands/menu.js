@@ -24,22 +24,31 @@ module.exports = {
         const freeRamGb = (os.freemem() / (1024 * 1024 * 1024)).toFixed(1);
         const usedRamGb = (parseFloat(totalRamGb) - parseFloat(freeRamGb)).toFixed(1);
         
-        const uptimeSeconds = os.uptime();
+        const uptimeSeconds = process.uptime();
         const systemDate = new Date();
         
-        const currentDate = `${String(systemDate.getDate()).padStart(2, '0')}/${String(systemDate.getMonth() + 1).padStart(2, '0')}/${systemDate.getFullYear()}`;
-        const currentTime = systemDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const currentDate = new Intl.DateTimeFormat('en-GB', {
+    timeZone: config.timezone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+}).format(systemDate);
+
+const currentTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+}).format(systemDate);
 
         // Option A Header with safe title formatting
         let menuMessage = `┌──────────────────────────────┐\n`;
         menuMessage += `  🤖 *_ISAAC BOT_*\n`;
         menuMessage += `  ━━━━━━━━━━━━━━━━━━━━━━━\n`;
-        menuMessage += `  👤 Owner  : Pappi Isaac\n`;
         menuMessage += `  ⚡ Prefix : [ ${config.prefix || '.'} ]\n`;
         menuMessage += `  🔒 Mode   : ${(config.WORK_TYPE || 'public').toUpperCase()}\n`;
         menuMessage += `  🕒 Time   : ${currentTime}\n`;
         menuMessage += `  🗓️ Date   : ${currentDate}\n`;
-        menuMessage += `  📦 Engine : Baileys v5\n`;
         menuMessage += `  💾 Ram    : ${usedRamGb} GB / ${totalRamGb} GB\n`;
         menuMessage += `  ⏱️ Uptime : ${formatUptime(uptimeSeconds)}\n`;
 menuMessage += `  🔌 Plugins : ${commands.size} commands\n`;
