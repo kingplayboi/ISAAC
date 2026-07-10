@@ -1,8 +1,59 @@
 /**
  * commands/groupmembers.js
  * --------------------------
- * Group membership commands: add, invite, join, welcome, goodbye, unmute, amute, aunmute
+ * Group membership commands: invite, join, welcome, goodbye, unmute, amute, aunmute
+ *
+ * NOTE: 'add' intentionally lives only in commands/add.js — it used to
+ * also be defined here, which silently overwrote the more capable
+ * standalone version (reply support, already-a-member check) in the
+ * command registry, since this file loaded after add.js.
+ *
+ * amute/aunmute schedule a GROUP-WIDE mute/unmute after a countdown
+ * (e.g. .amute 50s, .aunmute 2m) — not a per-member mute. Scheduled with
+ * setTimeout, so a bot restart before the timer fires cancels it
+ * silently, same limitation as the existing .reminder command.
  */
+const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
+
+function parseDuration(input) {
+  const match = /^(\d+)\s*(s|sec|secs|m|min|mins|h|hr|hrs)?$/i.exec((input || '').trim());
+  if (!match) return null;
+
+  const value = parseInt(match[1], 10);
+  if (!value || value <= 0) return null;
+
+  const unitRaw = (match[2] || 's').toLowerCase();
+  let ms, unitLabel;
+
+  if (unitRaw.startsWith('h')) {
+    ms = value * 3600000;
+    unitLabel = value === 1 ? 'hour' : 'hours';
+  } else if (unitRaw.startsWith('m')) {
+    ms = value * 60000;
+    unitLabel = value === 1 ? 'minute' : 'minutes';
+  } else {
+    ms = value * 1000;
+    unitLabel = value === 1 ? 'second' : 'seconds';
+  }
+
+  return { ms, label: `${value} ${unitLabel}` };
+}
+
+async function checkAdminPerms(sock, msg) {
+  const jid = msg.key.remoteJid;
+  const metadata = await sock.groupMetadata(jid);
+  const senderJid = msg.key.participant || msg.key.remoteJid;
+
+  if (!isSenderAdmin(metadata, senderJid)) {
+    await sock.sendMessage(jid, { text: '❌ Only group admins can use this command.' }, { quoted: msg });
+    return false;
+  }
+  if (!isBotAdmin(sock, metadata)) {
+    await sock.sendMessage(jid, { text: '❌ I need to be a group admin to change group settings.' }, { quoted: msg });
+    return false;
+  }
+  return true;
+}
 
 module.exports = [
 
@@ -124,65 +175,71 @@ module.exports = [
     }
   },
 
-  // ── AMUTE (mute a specific member by restricting/removing if they message — soft mute via warn) ─
+  // ── AMUTE — schedule the group to mute after a delay ────────────────────────
   {
     name: 'amute',
-    description: 'Mute a specific member (admin only - they get warned if they type). Usage: .amute @user',
-    async execute(sock, msg) {
+    description: 'Schedule the group to be muted after a delay. Usage: .amute 50s | .amute 2m | .amute 1h',
+    async execute(sock, msg, args) {
       const jid = msg.key.remoteJid;
       if (!jid.endsWith('@g.us')) {
         return sock.sendMessage(jid, { text: '❌ This command only works in groups.' }, { quoted: msg });
       }
 
-      const ctx = msg.message?.extendedTextMessage?.contextInfo;
-      const target = ctx?.mentionedJid?.[0] || ctx?.participant;
-
-      if (!target) {
-        return sock.sendMessage(jid, { text: '❌ Tag or reply to the user you want to mute.' }, { quoted: msg });
+      const duration = parseDuration(args[0]);
+      if (!duration) {
+        return sock.sendMessage(
+          jid,
+          { text: '❌ Usage: .amute <duration>\nExamples: .amute 50s | .amute 2m | .amute 1h' },
+          { quoted: msg }
+        );
       }
 
-      const fs = require('fs');
-      const path = require('path');
-      const settingsPath = path.join(__dirname, '../config/groupSettings.json');
-      let settings = {};
-      if (fs.existsSync(settingsPath)) settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      if (!settings[jid]) settings[jid] = {};
-      if (!settings[jid].mutedUsers) settings[jid].mutedUsers = [];
-      if (!settings[jid].mutedUsers.includes(target)) settings[jid].mutedUsers.push(target);
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      if (!(await checkAdminPerms(sock, msg))) return;
 
-      await sock.sendMessage(jid, { text: `🔇 @${target.split('@')[0]} has been muted.`, mentions: [target] }, { quoted: msg });
+      await sock.sendMessage(jid, { text: `⏳ Group will be muted in ${duration.label}.` }, { quoted: msg });
+
+      setTimeout(async () => {
+        try {
+          await sock.groupSettingUpdate(jid, 'announcement');
+          await sock.sendMessage(jid, { text: '🔇 Group has been muted — only admins can send messages now.' });
+        } catch (e) {
+          await sock.sendMessage(jid, { text: '❌ Scheduled mute failed: ' + e.message });
+        }
+      }, duration.ms);
     }
   },
 
-  // ── AUNMUTE ─────────────────────────────────────────────────────────────────
+  // ── AUNMUTE — schedule the group to unmute after a delay ─────────────────────
   {
     name: 'aunmute',
-    description: 'Unmute a specific member. Usage: .aunmute @user',
-    async execute(sock, msg) {
+    description: 'Schedule the group to be unmuted after a delay. Usage: .aunmute 50s | .aunmute 2m | .aunmute 1h',
+    async execute(sock, msg, args) {
       const jid = msg.key.remoteJid;
       if (!jid.endsWith('@g.us')) {
         return sock.sendMessage(jid, { text: '❌ This command only works in groups.' }, { quoted: msg });
       }
 
-      const ctx = msg.message?.extendedTextMessage?.contextInfo;
-      const target = ctx?.mentionedJid?.[0] || ctx?.participant;
-
-      if (!target) {
-        return sock.sendMessage(jid, { text: '❌ Tag or reply to the user you want to unmute.' }, { quoted: msg });
+      const duration = parseDuration(args[0]);
+      if (!duration) {
+        return sock.sendMessage(
+          jid,
+          { text: '❌ Usage: .aunmute <duration>\nExamples: .aunmute 50s | .aunmute 2m | .aunmute 1h' },
+          { quoted: msg }
+        );
       }
 
-      const fs = require('fs');
-      const path = require('path');
-      const settingsPath = path.join(__dirname, '../config/groupSettings.json');
-      let settings = {};
-      if (fs.existsSync(settingsPath)) settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      if (settings[jid]?.mutedUsers) {
-        settings[jid].mutedUsers = settings[jid].mutedUsers.filter(u => u !== target);
-        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-      }
+      if (!(await checkAdminPerms(sock, msg))) return;
 
-      await sock.sendMessage(jid, { text: `🔊 @${target.split('@')[0]} has been unmuted.`, mentions: [target] }, { quoted: msg });
+      await sock.sendMessage(jid, { text: `⏳ Group will be unmuted in ${duration.label}.` }, { quoted: msg });
+
+      setTimeout(async () => {
+        try {
+          await sock.groupSettingUpdate(jid, 'not_announcement');
+          await sock.sendMessage(jid, { text: '🔊 Group has been unmuted — everyone can send messages now.' });
+        } catch (e) {
+          await sock.sendMessage(jid, { text: '❌ Scheduled unmute failed: ' + e.message });
+        }
+      }, duration.ms);
     }
   },
 
