@@ -1,4 +1,4 @@
-const config = require('../config/config');
+const settingsStore = require('../utils/settingsStore');
 
 module.exports = {
     name: 'welcomegoodbye',
@@ -7,14 +7,14 @@ module.exports = {
         if (!msg.key.fromMe) return;
 
         if (args[0] === 'on') {
-            config.WELCOME_GOODBYE = true;
+            settingsStore.set('welcomegoodbye', true);
             return await sock.sendMessage(msg.key.remoteJid, { text: '👋 *Welcome/Goodbye:* ENABLED [🟢]' });
         } else if (args[0] === 'off') {
-            config.WELCOME_GOODBYE = false;
+            settingsStore.set('welcomegoodbye', false);
             return await sock.sendMessage(msg.key.remoteJid, { text: '👋 *Welcome/Goodbye:* DISABLED [🔴]' });
         }
 
-        const status = config.WELCOME_GOODBYE ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
+        const status = settingsStore.get('welcomegoodbye', false) ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
         await sock.sendMessage(msg.key.remoteJid, {
             text: `👋 *Welcome/Goodbye Status:* ${status}\n\n💡 Use \`.welcomegoodbye on\` or \`.welcomegoodbye off\` to change it.`
         });

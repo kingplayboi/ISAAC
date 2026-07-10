@@ -6,31 +6,6 @@
 
 module.exports = [
 
-  // ── ADD ─────────────────────────────────────────────────────────────────────
-  {
-    name: 'add',
-    description: 'Add a member to the group. Usage: .add 254712345678',
-    async execute(sock, msg, args) {
-      const jid = msg.key.remoteJid;
-      if (!jid.endsWith('@g.us')) {
-        return sock.sendMessage(jid, { text: '❌ This command only works in groups.' }, { quoted: msg });
-      }
-
-      const number = args[0]?.replace(/[^0-9]/g, '');
-      if (!number) {
-        return sock.sendMessage(jid, { text: '❌ Usage: .add 254712345678' }, { quoted: msg });
-      }
-
-      try {
-        const targetJid = `${number}@s.whatsapp.net`;
-        await sock.groupParticipantsUpdate(jid, [targetJid], 'add');
-        await sock.sendMessage(jid, { text: `✅ Added +${number} to the group.` }, { quoted: msg });
-      } catch (e) {
-        await sock.sendMessage(jid, { text: '❌ Could not add member: ' + e.message }, { quoted: msg });
-      }
-    }
-  },
-
   // ── INVITE ──────────────────────────────────────────────────────────────────
   {
     name: 'invite',

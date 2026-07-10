@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const config = require('../config/config');
+const settingsStore = require('../utils/settingsStore');
 
 const listPath = path.join(__dirname, '../config/badwords.json');
 
@@ -21,11 +21,11 @@ module.exports = {
         const sub = args[0]?.toLowerCase();
 
         if (sub === 'on') {
-            config.BADWORD_FILTER = true;
+            settingsStore.set('badword', true);
             return sock.sendMessage(jid, { text: '🚫 *Bad Word Filter:* ENABLED [🟢]' });
         }
         if (sub === 'off') {
-            config.BADWORD_FILTER = false;
+            settingsStore.set('badword', false);
             return sock.sendMessage(jid, { text: '🚫 *Bad Word Filter:* DISABLED [🔴]' });
         }
         if (sub === 'add') {
@@ -47,7 +47,7 @@ module.exports = {
             return sock.sendMessage(jid, { text: list.length ? `📋 *Bad words:*\n${list.join(', ')}` : '📋 List is empty.' }, { quoted: msg });
         }
 
-        const status = config.BADWORD_FILTER ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
+        const status = settingsStore.get('badword', false) ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
         await sock.sendMessage(jid, {
             text: `🚫 *Bad Word Filter Status:* ${status}\n\n💡 Use .badword on|off|add <word>|remove <word>|list`
         });

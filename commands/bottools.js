@@ -145,30 +145,6 @@ module.exports = [
     }
   },
 
-  // ── TOG — generic toggle wrapper for common bot settings ──────────────────────
-  {
-    name: 'tog',
-    description: 'Toggle a bot setting. Usage: .tog anticall on/off',
-    async execute(sock, msg, args) {
-      const jid = msg.key.remoteJid;
-      const setting = args[0]?.toLowerCase();
-      const mode = args[1]?.toLowerCase();
-
-      if (!setting || (mode !== 'on' && mode !== 'off')) {
-        return sock.sendMessage(jid, { text: '❌ Usage: .tog <setting> on/off\nExample: .tog anticall on' }, { quoted: msg });
-      }
-
-      const settingsPath = path.join(__dirname, '../config/groupSettings.json');
-      let settings = {};
-      if (fs.existsSync(settingsPath)) settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      if (!settings[jid]) settings[jid] = {};
-      settings[jid][setting] = mode === 'on';
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-
-      await sock.sendMessage(jid, { text: `✅ ${setting} turned ${mode}.` }, { quoted: msg });
-    }
-  },
-
   // ── UPDATE — check for git updates ─────────────────────────────────────────────
   {
     name: 'update',

@@ -1,22 +1,22 @@
-const config = require('../config/config');
+const settingsStore = require('../utils/settingsStore');
 
 module.exports = {
     name: 'autoread',
     description: 'Toggle automatic read receipts for incoming messages.',
-    async execute(sock, msg, args, commands) {
+    async execute(sock, msg, args) {
         if (!msg.key.fromMe) return;
 
         if (args[0] === 'on') {
-            config.READ_COMMAND = true;
+            settingsStore.set('autoread', true);
             return await sock.sendMessage(msg.key.remoteJid, { text: '📖 *Auto Read:* ENABLED [🟢]' });
         } else if (args[0] === 'off') {
-            config.READ_COMMAND = false;
+            settingsStore.set('autoread', false);
             return await sock.sendMessage(msg.key.remoteJid, { text: '📖 *Auto Read:* DISABLED [🔴]' });
         }
 
-        const status = config.READ_COMMAND ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: `📖 *Auto Read Status:* ${status}\n\n💡 Use \`.autoread on\` or \`.autoread off\` to change it.` 
+        const status = settingsStore.get('autoread', false) ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `📖 *Auto Read Status:* ${status}\n\n💡 Use \`.autoread on\` or \`.autoread off\` to change it.`
         });
     },
 };

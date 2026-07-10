@@ -201,10 +201,104 @@ sock.ev.on('connection.update', async ({ connection }) => {
         if (!event?.id) return;
         const metadata = await sock.groupMetadata(event.id);
         groupCache.set(event.id, metadata);
+
+        // Welcome/goodbye: only sends if BOTH the global master switch
+        // (.welcomegoodbye) and the per-group toggle (.welcome / .goodbye)
+        // are enabled.
+        const settingsStore = require('./utils/settingsStore');
+        if (settingsStore.get('welcomegoodbye', false)) {
+          const fs = require('fs');
+          const path = require('path');
+          const settingsPath = path.join(__dirname, 'config', 'groupSettings.json');
+          const groupSettings = fs.existsSync(settingsPath)
+            ? JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+            : {};
+          const perGroup = groupSettings[event.id] || {};
+
+          for (const participant of event.participants) {
+            if (event.action === 'add' && perGroup.welcome) {
+              await sock.sendMessage(event.id, {
+                text: `👋 Welcome @${participant.split('@')[0]} to *${metadata.subject}*! Glad to have you here.`,
+                mentions: [participant],
+              });
+            } else if (event.action === 'remove' && perGroup.goodbye) {
+              await sock.sendMessage(event.id, {
+                text: `👋 @${participant.split('@')[0]} has left *${metadata.subject}*. Goodbye!`,
+                mentions: [participant],
+              });
+            }
+          }
+        }
       } catch (error) {
         logger.error(`[groupCache] Failed to update metadata for ${event?.id}: ${error.message}`);
       }
     });
+// Autobio: periodically refresh the bio/about text with the current
+    // time (every 1 minute) and a rotating quote (changes every 12 hours).
+    // WhatsApp's About field is a static snapshot, not a live clock, so we
+    // keep it looking "current" by pushing an update on a safe interval
+    // rather than trying to update it continuously (which would risk
+    // rate-limiting / account restrictions).
+    setInterval(async () => {
+      try {
+        const settingsStore = require('./utils/settingsStore');
+        if (!settingsStore.get('autobio', false)) return;
+
+        const quotes = JSON.parse(fs.readFileSync(path.join(__dirname, 'config', 'autobioQuotes.json'), 'utf8'));
+        const quoteIndex = Math.floor(Date.now() / (12 * 60 * 60 * 1000)) % quotes.length;
+        const quote = quotes[quoteIndex];
+
+        const now = new Date();
+        const timeStr = new Intl.DateTimeFormat('en-GB', {
+          timeZone: config.timezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }).format(now);
+        const dateStr = new Intl.DateTimeFormat('en-GB', {
+          timeZone: config.timezone,
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }).format(now);
+
+        const bioText = `ISAAC-MD is alive now\n${dateStr} ${timeStr}\n"${quote}"`;
+
+        await sock.updateProfileStatus(bioText);
+      } catch (error) {
+        logger.error(`[autobio] Failed to update bio: ${error.message}`);
+      }
+    }, 60 * 1000);
+
+    // Automatically reject incoming calls when .anticall is enabled.
+    sock.ev.on('call', async (calls) => {
+      try {
+        const settingsStore = require('./utils/settingsStore');
+        if (!settingsStore.get('anticall', false)) return;
+
+        for (const call of calls) {
+          if (call.status === 'offer') {
+            await sock.rejectCall(call.id, call.from);
+            logger.info(`[anticall] Rejected incoming call from ${call.from}`);
+          }
+        }
+      } catch (error) {
+        logger.error(`[anticall] Failed to reject call: ${error.message}`);
+      }
+    });
+// WAPresence: keep presence as "available" continuously, since a
+    // single sendPresenceUpdate call fades once the connection idles.
+    setInterval(async () => {
+      try {
+        const settingsStore = require('./utils/settingsStore');
+        if (settingsStore.get('wapresence', false)) {
+          await sock.sendPresenceUpdate('available');
+        }
+      } catch (error) {
+        logger.error(`[wapresence] Failed to update presence: ${error.message}`);
+      }
+    }, 30 * 1000);
 
     // Register all event listeners, passing startBot itself into the
     // connection handler so it can trigger a clean reconnect when needed.

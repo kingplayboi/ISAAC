@@ -1,22 +1,22 @@
-const config = require('../config/config');
+const settingsStore = require('../utils/settingsStore');
 
 module.exports = {
     name: 'anticall',
-    description: 'Toggle automatic call rejection.',
-    async execute(sock, msg, args, commands) {
+    description: 'Toggle automatically rejecting incoming calls.',
+    async execute(sock, msg, args) {
         if (!msg.key.fromMe) return;
 
         if (args[0] === 'on') {
-            config.REJECT_CALL = true;
-            return await sock.sendMessage(msg.key.remoteJid, { text: '🚫 *Anti-Call:* ENABLED [🟢]' });
+            settingsStore.set('anticall', true);
+            return await sock.sendMessage(msg.key.remoteJid, { text: '📵 *Anticall:* ENABLED [🟢]' });
         } else if (args[0] === 'off') {
-            config.REJECT_CALL = false;
-            return await sock.sendMessage(msg.key.remoteJid, { text: '🚫 *Anti-Call:* DISABLED [🔴]' });
+            settingsStore.set('anticall', false);
+            return await sock.sendMessage(msg.key.remoteJid, { text: '📵 *Anticall:* DISABLED [🔴]' });
         }
 
-        const status = config.REJECT_CALL ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: `🚫 *Anti-Call Status:* ${status}\n\n💡 Use \`.anticall on\` or \`.anticall off\` to change it.` 
+        const status = settingsStore.get('anticall', false) ? 'ENABLED [🟢]' : 'DISABLED [🔴]';
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `📵 *Anticall Status:* ${status}\n\n💡 Use \`.anticall on\` or \`.anticall off\` to change it.`
         });
     },
 };
