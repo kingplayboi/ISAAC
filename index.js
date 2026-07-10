@@ -202,6 +202,7 @@ sock.ev.on('connection.update', async ({ connection }) => {
         const metadata = await sock.groupMetadata(event.id);
         groupCache.set(event.id, metadata);
 
+
         // Welcome/goodbye: only sends if BOTH the global master switch
         // (.welcomegoodbye) and the per-group toggle (.welcome / .goodbye)
         // are enabled.
@@ -215,19 +216,21 @@ sock.ev.on('connection.update', async ({ connection }) => {
             : {};
           const perGroup = groupSettings[event.id] || {};
 
-          for (const participant of event.participants) {
-            if (event.action === 'add' && perGroup.welcome) {
-              await sock.sendMessage(event.id, {
-                text: `👋 Welcome @${participant.split('@')[0]} to *${metadata.subject}*! Glad to have you here.`,
-                mentions: [participant],
-              });
-            } else if (event.action === 'remove' && perGroup.goodbye) {
-              await sock.sendMessage(event.id, {
-                text: `👋 @${participant.split('@')[0]} has left *${metadata.subject}*. Goodbye!`,
-                mentions: [participant],
-              });
+          for (const entry of event.participants) {
+              const participant = entry.phoneNumber || entry.id || entry;
+
+              if (event.action === 'add' && perGroup.welcome) {
+                await sock.sendMessage(event.id, {
+                  text: `👋 Welcome @${participant.split('@')[0]} to *${metadata.subject}*! Glad to have you here.`,
+                  mentions: [participant],
+                });
+              } else if (event.action === 'remove' && perGroup.goodbye) {
+                await sock.sendMessage(event.id, {
+                  text: `👋 @${participant.split('@')[0]} has left *${metadata.subject}*. Goodbye!`,
+                  mentions: [participant],
+                });
+              }
             }
-          }
         }
       } catch (error) {
         logger.error(`[groupCache] Failed to update metadata for ${event?.id}: ${error.message}`);
