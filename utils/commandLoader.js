@@ -25,6 +25,22 @@ function loadCommands(commandsPath) {
         }
         commands.set(cmd.name.toLowerCase(), cmd);
         logger.info(`[commandLoader] Loaded command: ${cmd.name}`);
+
+        // Also register any declared aliases, pointing to the same
+        // command object — previously this field was set on commands but
+        // never actually read anywhere, so aliases silently never worked.
+        if (Array.isArray(cmd.aliases)) {
+          for (const alias of cmd.aliases) {
+            if (typeof alias !== 'string' || !alias.trim()) continue;
+            const key = alias.toLowerCase();
+            if (commands.has(key)) {
+              logger.warn(`[commandLoader] Alias "${key}" from "${file}" conflicts with an existing command/alias — skipping.`);
+              continue;
+            }
+            commands.set(key, cmd);
+            logger.info(`[commandLoader] Registered alias: ${alias} -> ${cmd.name}`);
+          }
+        }
       }
     } catch (error) {
       logger.error(`[commandLoader] Failed to load "${file}": ${error.message}`);

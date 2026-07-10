@@ -1,5 +1,5 @@
 /**
- * commands/remini.js
+ *commands/remini.js
  * ---------------------
  * AI photo enhance/upscale. Usage: reply to an image with .remini
  *
@@ -8,6 +8,7 @@
  * just under this name and with a slightly different prompt style.
  */
 const https = require('https');
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
 function downloadImage(url) {
   return new Promise((resolve, reject) => {
@@ -35,7 +36,7 @@ module.exports = {
     await sock.sendMessage(jid, { text: '✨ Enhancing photo...' }, { quoted: msg });
 
     try {
-      const media = await sock.downloadMediaMessage({
+      const media = await downloadMediaMessage({
         message: quoted,
         key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant },
       });

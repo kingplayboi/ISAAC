@@ -1,7 +1,8 @@
 /**
  * commands/getpfp.js
  * ---------------------
- * Get a user's profile picture. Usage: .getpfp @user (or reply to their message)
+ * Get a user's profile picture. Usage: .getpfp <number> or .getpfp @user
+ * (or reply to their message)
  */
 const https = require('https');
 
@@ -21,11 +22,24 @@ function downloadBuffer(url) {
 
 module.exports = {
   name: 'getpfp',
-  description: "Get a user's profile picture. Usage: .getpfp @user (or reply to their message)",
-  async execute(sock, msg) {
+  description: "Get a user's profile picture. Usage: .getpfp <number> or @user (or reply to their message)",
+  async execute(sock, msg, args) {
     const jid = msg.key.remoteJid;
     const ctx = msg.message?.extendedTextMessage?.contextInfo;
-    const target = ctx?.mentionedJid?.[0] || ctx?.participant || (msg.key.participant || msg.key.remoteJid);
+
+    const numberArg = args[0]?.replace(/[^0-9]/g, '');
+
+    const target =
+      (numberArg ? `${numberArg}@s.whatsapp.net` : null) ||
+      ctx?.mentionedJid?.[0] ||
+      ctx?.participantPn ||
+      ctx?.participantAlt ||
+      ctx?.participant ||
+      msg.key.participantPn ||
+      msg.key.participantAlt ||
+      msg.key.participant ||
+      msg.key.remoteJidAlt ||
+      msg.key.remoteJid;
 
     try {
       const ppUrl = await sock.profilePictureUrl(target, 'image');

@@ -8,6 +8,7 @@
  * you a choice of result rather than being identical.
  */
 const https = require('https');
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
 function downloadImage(url) {
   return new Promise((resolve, reject) => {
@@ -35,7 +36,7 @@ module.exports = {
     await sock.sendMessage(jid, { text: '✨ Enhancing photo (alternate style)...' }, { quoted: msg });
 
     try {
-      const media = await sock.downloadMediaMessage({
+      const media = await downloadMediaMessage({
         message: quoted,
         key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant },
       });

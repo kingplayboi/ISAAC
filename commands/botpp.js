@@ -5,6 +5,8 @@
  * Usage: reply to an image with .botpp
  */
 
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+
 module.exports = {
   name: 'botpp',
   description: "Update the bot's profile picture (owner only). Usage: reply to an image with .botpp",
@@ -23,7 +25,7 @@ module.exports = {
     }
 
     try {
-      const media = await sock.downloadMediaMessage({
+      const media = await downloadMediaMessage({
         message: quoted,
         key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant },
       });

@@ -1,6 +1,21 @@
 
 const os = require('os');
 const config = require('../config/config');
+const https = require('https');
+
+function downloadBuffer(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return downloadBuffer(res.headers.location).then(resolve).catch(reject);
+      }
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
 
 // Safe, universal WhatsApp formatting
 function formatCommand(text) {
@@ -57,18 +72,19 @@ menuMessage += `└────────────────────�
         // Your 13 commands
 const categories = {
     'GROUP': ['demote', 'groupinfo', 'kick', 'mute', 'promote', 'tagall', 'warn', 'add', 'invite', 'join', 'welcome', 'goodbye', 'unmute', 'amute', 'aunmute', 'ban', 'unban', 'close', 'open', 'desc', 'subject', 'link', 'revoke', 'icon', 'hidetag', 'antilink', 'setgreet', 'tag'],
-    'SETTINGS': ['anticall', 'autoread', 'autorecording', 'autotyping', 'mode', 'prefix', 'autoview', 'pdm'],
+    'SETTINGS': ['anticall', 'autoread', 'autorecording', 'autotyping', 'mode', 'prefix', 'autoview', 'pdm', 'zushi'],
     'DOWNLOAD': ['download', 'spotify', 'play', 'tiktok', 'ig', 'fb', 'twitter', 'song', 'shazam', 'lyrics', 'lyrics2'],
     'GAMES': ['game', 'tictactoe', 'move', 'ttend', 'rps', 'wordguess', 'guess', 'wgend', 'mathquiz', 'mans', 'answer'],
-    'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'vv', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],
-    'AI': ['gemini', 'groq', 'worm', 'gpt', 'dall', 'bing', 'upscale', 'lydia', 'vision', 'void', 'claude', 'wormgpt'],
+    'WHATSAPP': ['poll', 'react', 'delete', 'read', 'setstatus', 'status', 'online', 'caption', 'doc', 'antiedit', 'call', 'cinfo', 'clear', 'creact', 'scstatus'],
+    'AI': ['gemini', 'groq', 'worm', 'gpt', 'dall', 'bing', 'upscale', 'lydia', 'vision', 'void', 'claude', 'wormgpt', 'gptdm'],
     'SECURITY': ['antifake', 'antigm', 'antigstatus', 'antispam', 'antiword', 'common', 'gpp', 'gstatus'],
     'USER': ['block', 'unblock', 'pp', 'fullpp', 'jid', 'gjid', 'left', 'ison'],
     'OWNER': ['owner', 'settings', 'kill', 'backup', 'reminder', 'task', 'update', 'updatenow', 'eval', 'gauth', 'antilinkall', 'antidelete', 'autolike', 'autobio', 'menutype', 'wapresence', 'badword', 'antibot', 'antitag', 'welcomegoodbye', 'broadcast', 'restart', 'blocklist', 'logout', 'fetch', 'shell', 'getcmd', 'getfile', 'cat', 'addsudo', 'delsudo', 'checksudo', 'clearsudos'],
     'TOOLS': ['webscan', 'apk', 'qr', 'url', 'imagesearch', 'define'],
     'LIVESCORE': ['livescore', 'table', 'bundesliga', 'epl', 'laliga', 'ligue1', 'seriea', 'ucl', 'news', 'playersearch', 'teamsearch'],
     'CODING': ['enc', 'gpass', 'compile-py', 'compile-js', 'compile-c', 'compile-c++'],
-    'CONVERTER': ['topdf', 'toexcel', 'toword', 'tovideo', 'toaudio', 'toimg', 'ocr', 'totext', 'carbon', 'cut', 'merge', 'take', 'audio'],
+    'CONVERTER': ['topdf', 'toexcel', 'toword', 'tovideo', 'toaudio', 'toimg', 'ocr', 'totext', 'carbon', 'cut', 'merge', 'audio'],
+    'MEDIA': ['s', 'take', 'mix', 'smeme', 'vv', 'vv2', 'botpp', 'getpfp', 'removebg', 'similarimage', 'remini', 'remini2', 'save'],
     'MISC': ['isaac', 'script', 'calc', 'donate', 'alive', 'help', 'joke', 'menu', 'ping', 'quote', 'user', 'stats', 'uptime', 'time'],
 };        for (const [categoryName, commandList] of Object.entries(categories)) {
             menuMessage += ` ╭─❏ ${categoryName} ❏\n`;

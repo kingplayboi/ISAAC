@@ -7,6 +7,8 @@ const path = require("path");
 const { exec } = require("child_process");
 const sharp = require("sharp");
 
+const ffmpegPath = process.env.FFMPEG_PATH || require('ffmpeg-static') || 'ffmpeg';
+
 module.exports = {
   name: "s",
   aliases: ["sticker"],
@@ -96,7 +98,7 @@ module.exports = {
 
       await new Promise((resolve, reject) => {
         exec(
-          `ffmpeg -y -i "${input}" -vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000" -loop 0 -ss 0 -t 10 -preset default -an -vsync 0 "${output}"`,
+          `"${ffmpegPath}" -y -i "${input}" -vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000" -loop 0 -ss 0 -t 10 -preset default -an -vsync 0 "${output}"`,
           err => {
             if (err) reject(err);
             else resolve();
