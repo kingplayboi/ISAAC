@@ -1,20 +1,22 @@
 /**
  * commands/whatsapp.js
  * ---------------------
- * WhatsApp commands: poll, react, delete, read, setstatus, status, vv, online, caption, delete, doc
+ * WhatsApp commands: poll, react, del, setstatus, status, online, caption, doc
  *
  * Usage:
  *   .poll Question | Option1 | Option2
  *   .react 😂          (reply to a message)
- *   .delete            (reply to a message)
- *   .read              (reply to a message)
+ *   .del               (reply to a message)
  *   .setstatus <text>
  *   .status
- *   .vv                (reply to a view-once message)
  *   .online
  *   .caption <text>    (reply to media)
  *   .doc               (reply to media)
+ *   .clear             (clears this entire chat, bot's own view)
+ *   .save1             (reply to a status)
  */
+
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
 module.exports = [
 
@@ -64,11 +66,14 @@ module.exports = [
         return sock.sendMessage(jid, { text: '❌ Provide an emoji. Example: .react 😂' }, { quoted: msg });
       }
 
+      const ctx = msg.message.extendedTextMessage.contextInfo;
+      const quotedParticipant = ctx.participantPn || ctx.participantAlt || ctx.participant;
+
       const key = {
         remoteJid: jid,
-        id: msg.message.extendedTextMessage.contextInfo.stanzaId,
-        fromMe: msg.message.extendedTextMessage.contextInfo.participant === sock.user.id,
-        participant: msg.message.extendedTextMessage.contextInfo.participant
+        id: ctx.stanzaId,
+        fromMe: quotedParticipant === (sock.user?.id?.split(':')[0] + '@s.whatsapp.net'),
+        participant: ctx.participant
       };
 
       await sock.sendMessage(jid, {
@@ -77,11 +82,10 @@ module.exports = [
     }
   },
 
-  // ── DELETE ────────────────────────────────────────────────────────────────
+  // ── DEL ───────────────────────────────────────────────────────────────────
   {
-    name: 'delete',
-    aliases: ['del', 'dlt'],
-    description: 'Delete a message. Reply to a message with .delete',
+    name: 'del',
+    description: 'Delete a message. Reply to a message with .del',
     async execute(sock, msg) {
       const jid = msg.key.remoteJid;
       const quoted = msg.message?.extendedTextMessage?.contextInfo;
@@ -92,38 +96,16 @@ module.exports = [
         }, { quoted: msg });
       }
 
+      const quotedParticipant = quoted.participantPn || quoted.participantAlt || quoted.participant;
+
       const msgKey = {
         remoteJid: jid,
         id: quoted.stanzaId,
-        fromMe: quoted.participant === sock.user?.id,
+        fromMe: quotedParticipant === (sock.user?.id?.split(':')[0] + '@s.whatsapp.net'),
         participant: quoted.participant
       };
 
       await sock.sendMessage(jid, { delete: msgKey });
-    }
-  },
-
-  // ── READ ──────────────────────────────────────────────────────────────────
-  {
-    name: 'read',
-    description: 'Mark a message as read. Reply to a message with .read',
-    async execute(sock, msg) {
-      const jid = msg.key.remoteJid;
-      const quoted = msg.message?.extendedTextMessage?.contextInfo;
-
-      if (!quoted) {
-        return sock.sendMessage(jid, {
-          text: '❌ Reply to a message with .read'
-        }, { quoted: msg });
-      }
-
-      await sock.readMessages([{
-        remoteJid: jid,
-        id: quoted.stanzaId,
-        participant: quoted.participant
-      }]);
-
-      await sock.sendMessage(jid, { text: '✅ Message marked as read.' }, { quoted: msg });
     }
   },
 
@@ -200,7 +182,11 @@ module.exports = [
         return sock.sendMessage(jid, { text: '❌ Only images and videos are supported.' }, { quoted: msg });
       }
 
-      const media = await sock.downloadMediaMessage({ message: quoted, key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant } });
+      const media = await downloadMediaMessage(
+        { message: quoted, key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant } },
+        'buffer',
+        {}
+      );
 
       await sock.sendMessage(jid, {
         [type]: media,
@@ -225,10 +211,11 @@ module.exports = [
       }
 
       const type = Object.keys(quoted)[0];
-      const media = await sock.downloadMediaMessage({
-        message: quoted,
-        key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant }
-      });
+      const media = await downloadMediaMessage(
+        { message: quoted, key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant } },
+        'buffer',
+        {}
+      );
 
       const mimetype = quoted[type]?.mimetype || 'application/octet-stream';
       const fileName = quoted[type]?.fileName || `file.${mimetype.split('/')[1] || 'bin'}`;
@@ -253,18 +240,6 @@ module.exports = [
     }
   },
 
-  // ── CALL ──────────────────────────────────────────────────────────────────
-  {
-    name: 'call',
-    description: 'Toggle auto-reject calls.',
-    async execute(sock, msg) {
-      const jid = msg.key.remoteJid;
-      await sock.sendMessage(jid, {
-        text: `📵 Auto-reject calls is managed in the bot settings.\nUse *.tog anticall on/off* to toggle.`
-      }, { quoted: msg });
-    }
-  },
-
   // ── CINFO ─────────────────────────────────────────────────────────────────
   {
     name: 'cinfo',
@@ -272,7 +247,7 @@ module.exports = [
     async execute(sock, msg) {
       const jid = msg.key.remoteJid;
       const ctx = msg.message?.extendedTextMessage?.contextInfo;
-      const mentioned = ctx?.mentionedJid?.[0] || ctx?.participant;
+      const mentioned = ctx?.mentionedJid?.[0] || ctx?.participantPn || ctx?.participantAlt || ctx?.participant;
 
       if (!mentioned) {
         return sock.sendMessage(jid, {
@@ -303,42 +278,33 @@ module.exports = [
   // ── CLEAR ─────────────────────────────────────────────────────────────────
   {
     name: 'clear',
-    description: 'Clear chat messages (bot side). Usage: .clear',
+    description: 'Clears this entire chat, leaving it empty. Usage: .clear',
     async execute(sock, msg) {
       const jid = msg.key.remoteJid;
-      await sock.chatModify({ clear: { messages: [] } }, jid);
-      await sock.sendMessage(jid, { text: '🧹 Chat cleared on bot side.' }, { quoted: msg });
-    }
-  },
 
-  // ── CREACT ────────────────────────────────────────────────────────────────
-  {
-    name: 'creact',
-    description: 'Clear all reactions from a message. Reply to a message with .creact',
-    async execute(sock, msg) {
-      const jid = msg.key.remoteJid;
-      const ctx = msg.message?.extendedTextMessage?.contextInfo;
-
-      if (!ctx) {
-        return sock.sendMessage(jid, { text: '❌ Reply to a message with .creact' }, { quoted: msg });
+      try {
+        await sock.chatModify(
+          {
+            delete: true,
+            lastMessages: [
+              {
+                key: { remoteJid: jid, fromMe: msg.key.fromMe, id: msg.key.id },
+                messageTimestamp: msg.messageTimestamp,
+              },
+            ],
+          },
+          jid
+        );
+      } catch (e) {
+        await sock.sendMessage(jid, { text: '❌ Failed to clear chat: ' + e.message }, { quoted: msg });
       }
-
-      const key = {
-        remoteJid: jid,
-        id: ctx.stanzaId,
-        fromMe: ctx.participant === sock.user?.id,
-        participant: ctx.participant
-      };
-
-      await sock.sendMessage(jid, { react: { text: '', key } });
-      await sock.sendMessage(jid, { text: '✅ Reaction cleared.' }, { quoted: msg });
     }
   },
 
-  // ── SCSTATUS ──────────────────────────────────────────────────────────────
+  // ── SAVE1 ─────────────────────────────────────────────────────────────────
   {
-    name: 'scstatus',
-    description: 'Screenshot/save a status. Reply to a status with .scstatus',
+    name: 'save1',
+    description: 'Screenshot/save a status. Reply to a status with .save1',
     async execute(sock, msg) {
       const jid = msg.key.remoteJid;
       await sock.sendMessage(jid, {
