@@ -36,7 +36,7 @@ module.exports = {
 
     if (!isRemove) {
       const text = `🌍 *Non-Kenyan members (${foreigners.length}):*\n\n${foreigners.map(f => `• @${(f.phoneNumber || f.id).split('@')[0]}`).join('\n')}\n\n💡 Use *.foreigners -x* to remove all of them.`;
-      return sock.sendMessage(jid, { text, mentions: foreigners.map(f => f.id) }, { quoted: msg });
+      return sock.sendMessage(jid, { text, mentions: foreigners.map(f => f.phoneNumber || f.id) }, { quoted: msg });
     }
 
     // Removal path — admin/bot-admin checks required
