@@ -79,26 +79,58 @@ module.exports = [
   },
 
   // ── JOIN ────────────────────────────────────────────────────────────────────
-  {
-    name: 'join',
-    description: 'Make the bot join a group via invite link. Usage: .join <link>',
-    async execute(sock, msg, args) {
-      const jid = msg.key.remoteJid;
-      const link = args[0];
+{
+  name: 'join',
+  description: 'Make the bot join a group via invite link. Usage: .join <link> or reply .join',
+  async execute(sock, msg, args) {
+    const jid = msg.key.remoteJid;
 
-      if (!link || !link.includes('chat.whatsapp.com')) {
-        return sock.sendMessage(jid, { text: '❌ Usage: .join <WhatsApp group invite link>' }, { quoted: msg });
-      }
+    let link = args[0];
 
-      try {
-        const code = link.split('chat.whatsapp.com/')[1];
-        await sock.groupAcceptInvite(code);
-        await sock.sendMessage(jid, { text: '✅ Bot joined the group successfully!' }, { quoted: msg });
-      } catch (e) {
-        await sock.sendMessage(jid, { text: '❌ Could not join group: ' + e.message }, { quoted: msg });
+    // If no link was provided, try getting it from the replied message
+    if (!link) {
+      const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+      if (quoted) {
+        link =
+          quoted.conversation ||
+          quoted.extendedTextMessage?.text ||
+          quoted.imageMessage?.caption ||
+          quoted.videoMessage?.caption ||
+          '';
       }
     }
-  },
+
+    // Extract the WhatsApp invite link
+    const match = link?.match(/https?:\/\/chat\.whatsapp\.com\/([A-Za-z0-9]+)/);
+
+    if (!match) {
+      return sock.sendMessage(
+        jid,
+        {
+          text: '❌ Usage:\n.join <WhatsApp group invite link>\n\nor reply to a message containing a WhatsApp group link with *.join*'
+        },
+        { quoted: msg }
+      );
+    }
+
+    try {
+      await sock.groupAcceptInvite(match[1]);
+
+      await sock.sendMessage(
+        jid,
+        { text: '✅ Bot joined the group successfully!' },
+        { quoted: msg }
+      );
+    } catch (e) {
+      await sock.sendMessage(
+        jid,
+        { text: '❌ Could not join group: ' + e.message },
+        { quoted: msg }
+      );
+    }
+  }
+},
 
   // ── WELCOME (toggle) ────────────────────────────────────────────────────────
   {
