@@ -22,4 +22,10 @@ function get(remoteJid, id) {
   return cache.get(`${remoteJid}:${id}`) || null;
 }
 
-module.exports = { set, get };
+function clear() {
+  const size = cache.size;
+  cache.clear();
+  return size;
+}
+
+module.exports = { set, get, clear };

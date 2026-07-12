@@ -335,6 +335,7 @@ module.exports = [
 },
 {
   name: 'worm',
+  sessions: wormgptSessions,
   aliases: ['wormgpt', 'wgpt', 'dark', 'darkgpt'],
   description: 'WormGPT with conversation memory. Usage: .worm your question',
 

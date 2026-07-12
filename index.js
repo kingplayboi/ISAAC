@@ -16,7 +16,7 @@ require('dotenv').config();
  */
 
 const path = require('path');
-const NodeCache = require('node-cache');
+const { groupCache } = require('./utils/groupCache');
 const figlet = require('figlet');
 const chalk = require('chalk');
 const {
@@ -30,6 +30,7 @@ const logger = require('./utils/logger');
 const { loadCommands } = require('./utils/commandLoader');
 const { registerConnectionHandler } = require('./events/connection');
 const { registerMessageHandler } = require('./events/messages');
+const { runClearCache } = require('./commands/clearcache');
 
 // Load every command file once at startup. The resulting Map is passed
 const fs = require('fs');
@@ -76,7 +77,6 @@ const commands = loadCommands(commandsPath);
 // Caches group metadata in memory so Baileys can resolve group encryption
 // sessions without re-fetching from WhatsApp on every message. Without this,
 // group commands can fail with a "No sessions" error.
-const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
 
 /**
  * Initializes (or re-initializes, on reconnect) the WhatsApp socket
@@ -307,6 +307,17 @@ sock.ev.on('connection.update', async ({ connection }) => {
     // connection handler so it can trigger a clean reconnect when needed.
     registerConnectionHandler(sock, startBot, wasAlreadyRegistered);
     registerMessageHandler(sock, commands);
+
+    // Automatically clear in-memory caches every 6 hours so long uptime
+    // doesn't slowly grow memory usage. Only schedule this once, not on
+    // every reconnect.
+    if (!global.__cacheClearScheduled) {
+      global.__cacheClearScheduled = true;
+      setInterval(() => {
+        const results = runClearCache(commands);
+        logger.info(`[clearcache] Automatic cache clear: ${JSON.stringify(results)}`);
+      }, 6 * 60 * 60 * 1000);
+    }
   } catch (error) {
     logger.error(`[startBot] Failed to start the bot: ${error.message}`);
   }
