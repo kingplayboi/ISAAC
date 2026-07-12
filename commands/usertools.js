@@ -85,27 +85,34 @@ module.exports = [
     }
   },
 
-  // ── FULLPP — get full resolution profile picture ────────────────────────────
+  // ── FULLPP — set the bot's own WhatsApp profile picture from a replied image ─
   {
     name: 'fullpp',
-    description: "Get a user's full resolution profile picture. Usage: .fullpp @user",
+    description: "Set your WhatsApp profile picture from a replied image. Usage: reply to an image with .fullpp",
     async execute(sock, msg) {
       const jid = msg.key.remoteJid;
+
+      if (!msg.key.fromMe) {
+        return sock.sendMessage(jid, { text: '❌ Only the owner can change the profile picture.' }, { quoted: msg });
+      }
+
       const ctx = msg.message?.extendedTextMessage?.contextInfo;
-      const target = ctx?.mentionedJid?.[0] || ctx?.participant || (msg.key.participant || msg.key.remoteJid);
+      const quoted = ctx?.quotedMessage;
+
+      if (!quoted?.imageMessage) {
+        return sock.sendMessage(jid, { text: '❌ Reply to an image with .fullpp' }, { quoted: msg });
+      }
 
       try {
-        const ppUrl = await sock.profilePictureUrl(target, 'image');
-        const buffer = await downloadBuffer(ppUrl);
-        await sock.sendMessage(jid, {
-          document: buffer,
-          mimetype: 'image/jpeg',
-          fileName: 'profile.jpg',
-          caption: `🖼 Full resolution profile picture of @${target.split('@')[0]}`,
-          mentions: [target]
-        }, { quoted: msg });
+        const media = await sock.downloadMediaMessage({
+          message: quoted,
+          key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant }
+        });
+
+        await sock.updateProfilePicture(sock.user.id, media);
+        await sock.sendMessage(jid, { text: '✅ Profile picture updated.' }, { quoted: msg });
       } catch (e) {
-        await sock.sendMessage(jid, { text: '❌ No profile picture available for this user.' }, { quoted: msg });
+        await sock.sendMessage(jid, { text: '❌ Could not update profile picture: ' + e.message }, { quoted: msg });
       }
     }
   },
