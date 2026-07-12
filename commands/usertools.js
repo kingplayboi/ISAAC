@@ -5,6 +5,7 @@
  */
 
 const https = require('https');
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
 function downloadBuffer(url) {
   return new Promise((resolve, reject) => {
@@ -85,7 +86,7 @@ module.exports = [
     }
   },
 
-  // ── FULLPP — set the bot's own WhatsApp profile picture from a replied image ─
+  // ── FULLPP — set the bot's own WhatsApp profile picture from a replied image ──
   {
     name: 'fullpp',
     description: "Set your WhatsApp profile picture from a replied image. Usage: reply to an image with .fullpp",
@@ -104,10 +105,11 @@ module.exports = [
       }
 
       try {
-        const media = await sock.downloadMediaMessage({
-          message: quoted,
-          key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant }
-        });
+        const media = await downloadMediaMessage(
+          { message: quoted, key: { remoteJid: jid, id: ctx.stanzaId, participant: ctx.participant } },
+          'buffer',
+          {}
+        );
 
         await sock.updateProfilePicture(sock.user.id, media);
         await sock.sendMessage(jid, { text: '✅ Profile picture updated.' }, { quoted: msg });
