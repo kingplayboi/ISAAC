@@ -2,7 +2,7 @@
  * commands/getpfp.js
  * ---------------------
  * Get a user's profile picture. Usage: .getpfp <number> or .getpfp @user
- * (or reply to their message)
+ * (or reply to their message). Aliased as .pp
  */
 const https = require('https');
 
@@ -20,8 +20,26 @@ function downloadBuffer(url) {
   });
 }
 
+// Resolve an @lid JID to a real phone-number JID via group metadata.
+// profilePictureUrl (and other WhatsApp lookups) don't accept @lid values.
+async function resolveToPhoneJid(sock, jid, groupJid) {
+  if (!jid || !jid.endsWith('@lid')) return jid;
+  if (!groupJid || !groupJid.endsWith('@g.us')) return jid;
+
+  try {
+    const metadata = await sock.groupMetadata(groupJid);
+    const match = metadata.participants.find((p) => p.lid === jid || p.id === jid);
+    if (match?.phoneNumber) return match.phoneNumber;
+    if (match?.id && !match.id.endsWith('@lid')) return match.id;
+  } catch (e) {
+    // fall through — return original, downstream call will surface the error
+  }
+  return jid;
+}
+
 module.exports = {
   name: 'getpfp',
+  aliases: ['pp'],
   description: "Get a user's profile picture. Usage: .getpfp <number> or @user (or reply to their message)",
   async execute(sock, msg, args) {
     const jid = msg.key.remoteJid;
@@ -29,17 +47,19 @@ module.exports = {
 
     const numberArg = args[0]?.replace(/[^0-9]/g, '');
 
-    const target =
+    let target =
       (numberArg ? `${numberArg}@s.whatsapp.net` : null) ||
-      ctx?.mentionedJid?.[0] ||
       ctx?.participantPn ||
       ctx?.participantAlt ||
+      ctx?.mentionedJid?.[0] ||
       ctx?.participant ||
       msg.key.participantPn ||
       msg.key.participantAlt ||
       msg.key.participant ||
       msg.key.remoteJidAlt ||
       msg.key.remoteJid;
+
+    target = await resolveToPhoneJid(sock, target, jid);
 
     try {
       const ppUrl = await sock.profilePictureUrl(target, 'image');
