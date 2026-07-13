@@ -336,6 +336,12 @@ process.on('unhandledRejection', (reason) => {
   logger.error(`[unhandledRejection] ${reason}`);
 });
 
-// Kick everything off.
-printBanner();
-startBot();
+// Kick everything off. ISAAC_RESTART_DELAY_MS is set by .updatenow when it
+// spawns this process as a replacement for itself — a short delay avoids
+// both processes touching the auth_info_baileys files at the same time
+// during the handoff.
+const startupDelay = parseInt(process.env.ISAAC_RESTART_DELAY_MS || '0', 10);
+setTimeout(() => {
+  printBanner();
+  startBot();
+}, startupDelay);
