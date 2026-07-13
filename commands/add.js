@@ -14,6 +14,10 @@
  * "bad-request" by WhatsApp, regardless of membership. contextInfo also
  * carries a phone-number counterpart (participantAlt / participantPn
  * depending on the message shape), which we prefer whenever present.
+ *
+ * If a direct add fails (commonly because the target's privacy settings
+ * block being added by non-contacts), we fall back to DMing them a
+ * group invite link instead of just erroring out.
  */
 const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
 
@@ -102,6 +106,14 @@ module.exports = {
         return;
       }
 
+      if (participantResult && participantResult.status !== '200') {
+        // Couldn't add directly (commonly status 403 — their privacy
+        // settings block being added by non-contacts). Fall back to
+        // DMing them an invite link instead.
+        await sendInviteFallback(sock, jid, targetJid, metadata, msg);
+        return;
+      }
+
       await sock.sendMessage(
         jid,
         { text: `✅ Added @${targetJid.split('@')[0]} to the group.`, mentions: [targetJid] },
@@ -110,18 +122,38 @@ module.exports = {
     } catch (error) {
       // A bad-request here after a reply-based add most often means the
       // LID we had to fall back to wasn't accepted — not necessarily a
-      // real failure to add. Say so plainly instead of a raw error dump.
-      if (error.message?.includes('bad-request') && repliedLid && !repliedPn) {
-        await sock.sendMessage(
-          jid,
-          {
-            text: '❌ Could not add that person from the reply — WhatsApp rejected the ID this reply gave us. Try `.add <their number>` directly instead.'
-          },
-          { quoted: msg }
-        );
-        return;
+      // real failure to add. Try the invite-link fallback rather than
+      // just erroring out, since the end goal (get them into the group)
+      // can still be achieved this way.
+      try {
+        await sendInviteFallback(sock, jid, targetJid, metadata, msg);
+      } catch (fallbackError) {
+        await sock.sendMessage(jid, { text: `❌ Failed to add member: ${error.message}` }, { quoted: msg });
       }
-      await sock.sendMessage(jid, { text: `❌ Failed to add member: ${error.message}` }, { quoted: msg });
     }
   },
 };
+
+async function sendInviteFallback(sock, groupJid, targetJid, metadata, msg) {
+  try {
+    const code = await sock.groupInviteCode(groupJid);
+    const inviteLink = `https://chat.whatsapp.com/${code}`;
+    const groupName = metadata.subject || 'the group';
+
+    await sock.sendMessage(targetJid, {
+      text: `👋 This invite was sent to you by ISAAC-MD so you can join *${groupName}*:\n\n${inviteLink}`,
+    });
+
+    await sock.sendMessage(
+      groupJid,
+      { text: `📨 Couldn't add @${targetJid.split('@')[0]} directly, so an invite link was sent to their DM instead.`, mentions: [targetJid] },
+      { quoted: msg }
+    );
+  } catch (e) {
+    await sock.sendMessage(
+      groupJid,
+      { text: `❌ Couldn't add @${targetJid.split('@')[0]} directly, and couldn't DM them an invite either: ${e.message}`, mentions: [targetJid] },
+      { quoted: msg }
+    );
+  }
+}

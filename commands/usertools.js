@@ -68,23 +68,63 @@ module.exports = [
   },
 
   // ── PP — get a user's profile picture ─────────────────────────────────────────
-  {
+{
     name: 'pp',
     description: "Get a user's profile picture. Usage: .pp @user (or reply to their message)",
     async execute(sock, msg) {
-      const jid = msg.key.remoteJid;
-      const ctx = msg.message?.extendedTextMessage?.contextInfo;
-      const target = ctx?.mentionedJid?.[0] || ctx?.participant || (msg.key.participant || msg.key.remoteJid);
+        const jid = msg.key.remoteJid;
+        const ctx = msg.message?.extendedTextMessage?.contextInfo;
 
-      try {
-        const ppUrl = await sock.profilePictureUrl(target, 'image');
-        const buffer = await downloadBuffer(ppUrl);
-        await sock.sendMessage(jid, { image: buffer, caption: `🖼 Profile picture of @${target.split('@')[0]}`, mentions: [target] }, { quoted: msg });
-      } catch (e) {
-        await sock.sendMessage(jid, { text: '❌ No profile picture available for this user.' }, { quoted: msg });
-      }
+        const target =
+            ctx?.mentionedJid?.[0] ||
+            ctx?.participantAlt ||
+            ctx?.participant ||
+            msg.key.participant ||
+            msg.key.remoteJid;
+
+        console.log({
+            target,
+            participant: ctx?.participant,
+            participantAlt: ctx?.participantAlt,
+            mentioned: ctx?.mentionedJid
+        });
+
+        try {
+            const ppUrl = await sock.profilePictureUrl(target, 'image');
+
+            console.log("Profile Picture URL:", ppUrl);
+
+            if (!ppUrl) {
+                return await sock.sendMessage(
+                    jid,
+                    { text: '❌ No profile picture found.' },
+                    { quoted: msg }
+                );
+            }
+
+            await sock.sendMessage(
+                jid,
+                {
+                    image: { url: ppUrl },
+                    caption: `🖼 Profile picture of @${target.split('@')[0]}`,
+                    mentions: [target]
+                },
+                { quoted: msg }
+            );
+
+        } catch (err) {
+            console.log("PP ERROR:", err);
+
+            await sock.sendMessage(
+                jid,
+                {
+                    text: `❌ Couldn't fetch profile picture.\n\n${err.message}`
+                },
+                { quoted: msg }
+            );
+        }
     }
-  },
+},
 
   // ── FULLPP — set the bot's own WhatsApp profile picture from a replied image ──
   {
