@@ -131,10 +131,10 @@ module.exports = [
     }
   },
 
-  // ── GSTATUS — post a replied photo/video as the bot's status, shared with this group ──
+  // ── GSTATUS — post a replied photo/video directly into the group chat ────────
   {
     name: 'gstatus',
-    description: "Post a replied photo/video as the bot's status, visible to this group. Usage: reply to media with .gstatus",
+    description: "Post a replied photo/video into this group's chat (not the bot's WhatsApp status). Usage: reply to media with .gstatus",
     async execute(sock, msg) {
       const jid = msg.key.remoteJid;
 
@@ -157,19 +157,14 @@ module.exports = [
           {}
         );
 
-        const metadata = await sock.groupMetadata(jid);
-        const statusJidList = metadata.participants.map(p => p.phoneNumber || p.id);
-
         const type = quoted.imageMessage ? 'image' : 'video';
-        await sock.sendMessage(
-          'status@broadcast',
-          { [type]: media, caption: quoted[`${type}Message`]?.caption || '' },
-          { statusJidList }
-        );
+        const caption = quoted[`${type}Message`]?.caption || '';
 
-        await sock.sendMessage(jid, { text: '✅ Posted to status, visible to this group (expires in 24h).' }, { quoted: msg });
+        // Send straight into the group chat as a normal message —
+        // this is the "group status", distinct from the bot's personal WhatsApp status.
+        await sock.sendMessage(jid, { [type]: media, caption }, { quoted: msg });
       } catch (e) {
-        await sock.sendMessage(jid, { text: '❌ Failed to post status: ' + e.message }, { quoted: msg });
+        await sock.sendMessage(jid, { text: '❌ Failed to post: ' + e.message }, { quoted: msg });
       }
     }
   },
