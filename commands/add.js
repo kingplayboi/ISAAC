@@ -136,23 +136,74 @@ module.exports = {
 
 async function sendInviteFallback(sock, groupJid, targetJid, metadata, msg) {
   try {
-    const code = await sock.groupInviteCode(groupJid);
-    const inviteLink = `https://chat.whatsapp.com/${code}`;
-    const groupName = metadata.subject || 'the group';
+    const inviteCode = await sock.groupInviteCode(groupJid);
+    const inviteLink = `https://chat.whatsapp.com/${inviteCode}`;
 
-    await sock.sendMessage(targetJid, {
-      text: `👋 This invite was sent to you by ISAAC-MD so you can join *${groupName}*:\n\n${inviteLink}`,
-    });
+    let image;
+
+    try {
+      const ppUrl = await sock.profilePictureUrl(groupJid, 'image');
+      const https = require('https');
+
+      image = await new Promise((resolve, reject) => {
+        https.get(ppUrl, (res) => {
+          const chunks = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => resolve(Buffer.concat(chunks)));
+          res.on('error', reject);
+        }).on('error', reject);
+      });
+    } catch {
+      image = null;
+    }
+
+    const caption = `╭━━━〔 📨 GROUP INVITATION 〕━━━╮
+
+🏷️ *Group:* ${metadata.subject}
+
+👥 *Members:* ${metadata.participants.length}
+
+🤖 *Sent by:* ISAAC-MD
+
+━━━━━━━━━━━━━━━━━━
+
+You couldn't be added directly because of your WhatsApp privacy settings.
+
+Tap the link below to join the group:
+
+🔗 ${inviteLink}
+
+━━━━━━━━━━━━━━━━━━
+
+Hope to see you there! 🎉`;
+
+    if (image) {
+      await sock.sendMessage(targetJid, {
+        image,
+        caption
+      });
+    } else {
+      await sock.sendMessage(targetJid, {
+        text: caption
+      });
+    }
 
     await sock.sendMessage(
       groupJid,
-      { text: `📨 Couldn't add @${targetJid.split('@')[0]} directly, so an invite link was sent to their DM instead.`, mentions: [targetJid] },
+      {
+        text: `📨 Couldn't add @${targetJid.split('@')[0]} directly, so I've sent them a private invitation.`,
+        mentions: [targetJid]
+      },
       { quoted: msg }
     );
+
   } catch (e) {
     await sock.sendMessage(
       groupJid,
-      { text: `❌ Couldn't add @${targetJid.split('@')[0]} directly, and couldn't DM them an invite either: ${e.message}`, mentions: [targetJid] },
+      {
+        text: `❌ Couldn't add @${targetJid.split('@')[0]} directly, and couldn't send an invite either:\n${e.message}`,
+        mentions: [targetJid]
+      },
       { quoted: msg }
     );
   }
