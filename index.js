@@ -16,6 +16,7 @@ const { loadCommands } = require('./utils/commandLoader');
 const { registerConnectionHandler } = require('./events/connection');
 const { registerMessageHandler } = require('./events/messages');
 const { runClearCache } = require('./commands/clearcache');
+const { fetchCore } = require('./utils/fetchCore');
 
 // Load every command file once at startup. The resulting Map is passed
 const fs = require('fs');
@@ -57,7 +58,7 @@ function restoreSessionFromEnv() {
 }
 // into the message handler so it can dispatch incoming commands by name.
 const commandsPath = path.join(__dirname, 'commands');
-const commands = loadCommands(commandsPath);
+let commands = {};
 
 // Caches group metadata in memory so Baileys can resolve group encryption
 // sessions without re-fetching from WhatsApp on every message. Without this,
@@ -326,7 +327,9 @@ process.on('unhandledRejection', (reason) => {
 // both processes touching the auth_info_baileys files at the same time
 // during the handoff.
 const startupDelay = parseInt(process.env.ISAAC_RESTART_DELAY_MS || '0', 10);
-setTimeout(() => {
+setTimeout(async () => {
   printBanner();
+  await fetchCore();
+  commands = loadCommands(commandsPath);
   startBot();
 }, startupDelay);

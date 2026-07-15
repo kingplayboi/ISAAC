@@ -27,3 +27,4 @@ config/botSettings.json
 config/sudoList.json
 temp_pair_sessions/
 .deployed-commit
+commands/
