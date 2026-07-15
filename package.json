@@ -40,6 +40,7 @@
     "node-webpmux": "^3.2.1",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
+    "pg": "^8.22.0",
     "pino": "^9.4.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
