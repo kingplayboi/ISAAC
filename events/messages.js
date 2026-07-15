@@ -401,7 +401,7 @@ console.log('STARTS WITH PREFIX =', text.startsWith(config.prefix));
                     const encoded = encodeURIComponent(text);
 
                     const reply = await new Promise((resolve, reject) => {
-                      https.get(`${KEITH_BASE}/ai/gemini?q=${encoded}`, (res) => {
+                      https.get(`${KEITH_BASE}/ai/gpt?q=${encoded}`, (res) => {
                         let raw = '';
                         res.on('data', (c) => (raw += c));
                         res.on('end', () => {
