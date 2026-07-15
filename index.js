@@ -1,20 +1,5 @@
 globalThis.crypto = require('node:crypto').webcrypto;
 require('dotenv').config();
-/**
- * index.js
- * --------
- * Entry point of the application.
- *
- * This file is intentionally kept thin — its only job is to:
- *   1. Set up the Baileys socket connection (with auth persistence).
- *   2. Load all commands from the /commands folder.
- *   3. Wire up event handlers from /events.
- *   4. Handle top-level process errors so the bot doesn't die silently.
- *
- * All actual feature logic lives in commands/ and events/, keeping this
- * file easy to read at a glance.
- */
-
 const path = require('path');
 const { groupCache } = require('./utils/groupCache');
 const figlet = require('figlet');
