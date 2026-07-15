@@ -24,7 +24,14 @@ module.exports = {
         const quoted =
             msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
 
-        if (!quoted || !quoted.conversation) {
+        const text =
+            quoted?.conversation ||
+            quoted?.extendedTextMessage?.text ||
+            quoted?.imageMessage?.caption ||
+            quoted?.videoMessage?.caption ||
+            quoted?.documentMessage?.caption;
+
+        if (!text) {
             return sock.sendMessage(
                 jid,
                 { text: "❌ Reply to a text message." },
@@ -40,7 +47,7 @@ module.exports = {
             await sock.sendMessage(
                 jid,
                 {
-                    text: quoted.conversation,
+                    text,
                     mentions
                 },
                 { quoted: msg }
