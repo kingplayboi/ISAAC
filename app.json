@@ -8,6 +8,12 @@
   "buildpacks": [
   { "url": "heroku/nodejs" }
 ],
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini",
+      "as": "DATABASE"
+    }
+  ],
   "formation": {
     "worker": {
       "quantity": 1,
@@ -61,7 +67,7 @@
     },
     "AUTO_READ_STATUS": {
       "description": "Automatically view contacts' WhatsApp statuses (true/false)",
-      "value": "false",
+      "value": "true",
       "required": false
     },
     "AUTO_REACT": {
