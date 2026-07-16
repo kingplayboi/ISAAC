@@ -31,6 +31,7 @@
     "figlet": "^1.11.0",
     "form-data": "^4.0.6",
     "franc-min": "^6.2.0",
+    "google-tts-api": "^2.0.2",
     "googleapis": "^173.0.0",
     "jimp": "^1.6.1",
     "jsqr": "^1.4.0",
