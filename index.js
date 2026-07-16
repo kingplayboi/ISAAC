@@ -15,7 +15,6 @@ const logger = require('./utils/logger');
 const { loadCommands } = require('./utils/commandLoader');
 const { registerConnectionHandler } = require('./events/connection');
 const { registerMessageHandler } = require('./events/messages');
-const { runClearCache } = require('./commands/clearcache');
 const { fetchCore } = require('./utils/fetchCore');
 
 // Load every command file once at startup. The resulting Map is passed
@@ -300,7 +299,7 @@ sock.ev.on('connection.update', async ({ connection }) => {
     if (!global.__cacheClearScheduled) {
       global.__cacheClearScheduled = true;
       setInterval(() => {
-        const results = runClearCache(commands);
+        const results = global.runClearCache(commands);
         logger.info(`[clearcache] Automatic cache clear: ${JSON.stringify(results)}`);
       }, 6 * 60 * 60 * 1000);
     }
@@ -331,5 +330,7 @@ setTimeout(async () => {
   printBanner();
   await fetchCore();
   commands = loadCommands(commandsPath);
+  const { runClearCache } = require('./commands/clearcache');
+  global.runClearCache = runClearCache;
   startBot();
 }, startupDelay);
