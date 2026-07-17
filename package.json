@@ -17,7 +17,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@distube/ytdl-core": "^4.16.12",
     "@hapi/boom": "^10.0.1",
     "@img/sharp-wasm32": "^0.35.3",
     "@whiskeysockets/baileys": "^7.0.0-rc13",
