@@ -199,12 +199,13 @@ function registerMessageHandler(sock, commands) {
               logger.error(`[antidelete cache] ${e.message}`);
             }
 
-          if (config.AUTO_TYPING) {
+          const settingsStore = require('../utils/settingsStore');
+          if (settingsStore.get('autotyping', false)) {
               await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
           }
-        if (config.AUTO_RECORDING) {
-            await sock.sendPresenceUpdate('recording', msg.key.remoteJid);
-        }
+          if (settingsStore.get('autorecording', false)) {
+              await sock.sendPresenceUpdate('recording', msg.key.remoteJid);
+          }
 
         const text = extractMessageText(msg.message).trim();
 if (!text) continue;
