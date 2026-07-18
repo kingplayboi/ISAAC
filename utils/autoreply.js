@@ -1,10 +1,3 @@
-/**
- * utils/autoreply.js
- * ------------------
- * A small fixed set of greeting triggers the bot responds to automatically,
- * even without the command prefix. Matching is case-insensitive and only
- * triggers on exact whole-message matches (not substrings).
- */
 const TRIGGERS = {
   hi: 'Hey there! 👋',
   hello: 'Hello! How can I help? 😊',
