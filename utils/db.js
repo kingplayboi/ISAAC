@@ -1,15 +1,3 @@
-/**
- * utils/db.js
- * ------------
- * Lazily connects to PostgreSQL the first time any DB-backed module needs
- * it, and ensures required tables exist. Reuses the same pool afterward.
- *
- * Requires DATABASE_URL to be set. On Heroku, attaching the "Heroku
- * Postgres" add-on (Resources tab in your app dashboard) sets this
- * automatically — no manual config needed. Locally, put it in a .env file
- * or export it in your shell.
- */
-
 const { Pool } = require('pg');
 
 const DATABASE_URL = process.env.DATABASE_URL;
