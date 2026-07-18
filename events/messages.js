@@ -2,6 +2,7 @@ const { proto, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const config = require('../config/config');
 const logger = require('../utils/logger');
 const settingsStore = require('../utils/settingsStore');
+const groupSettingsStore = require('../utils/groupSettingsStore');
 
 function extractMessageText(message) {
   if (!message) return '';
@@ -174,14 +175,9 @@ function registerMessageHandler(sock, commands) {
 if (!text) continue;
 
           if (msg.key.remoteJid.endsWith('@g.us')) {
-            const fs = require('fs');
-            const path = require('path');
-            const settingsPath = path.join(__dirname, '../config/groupSettings.json');
-
               let antilinkOn = settingsStore.get('antilinkall', false);
-              if (!antilinkOn && fs.existsSync(settingsPath)) {
-                const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-                antilinkOn = settings[msg.key.remoteJid]?.antilink === true;
+              if (!antilinkOn) {
+                antilinkOn = groupSettingsStore.get(msg.key.remoteJid, 'antilink', false);
               }
 
             const linkRegex = /(https?:\/\/|www\.|chat\.whatsapp\.com\/|wa\.me\/)\S+/i;
