@@ -92,14 +92,17 @@ function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
     switch (statusCode) {
       case DisconnectReason.badSession:
         logger.error('❌ Bad session file. Delete the auth folder and restart to re-link.');
+        process.exit(1);
         break;
 
       case DisconnectReason.loggedOut:
         logger.error('❌ Device logged out. Delete the auth folder / SESSION_ID and re-scan to re-link.');
+        process.exit(1);
         break;
 
       case DisconnectReason.connectionReplaced:
         logger.error('❌ Connection replaced — another session was opened elsewhere. Not auto-reconnecting.');
+        process.exit(1);
         break;
 
       case DisconnectReason.connectionClosed:
