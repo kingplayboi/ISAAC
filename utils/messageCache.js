@@ -1,10 +1,3 @@
-/**
- * utils/messageCache.js
- * ------------------------
- * Keeps a short-lived in-memory cache of recent messages so their
- * content can be recovered if the sender deletes them (antidelete).
- */
-
 const CACHE_LIMIT = 500;
 const cache = new Map(); // key: `${remoteJid}:${id}` -> { type, text, rawMessage, senderJid, timestamp }
 
