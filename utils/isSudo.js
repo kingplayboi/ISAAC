@@ -1,10 +1,3 @@
-/**
- * utils/isSudo.js
- * -----------------
- * Manages a list of "sudo" users granted elevated (but not developer-level)
- * access by the bot owner. Sudo users can use safer settings-type commands,
- * never shell/getcmd/getfile/cat.
- */
 const fs = require('fs');
 const path = require('path');
 const { isOwner } = require('./isOwner');
