@@ -1,8 +1,3 @@
-/**
- * utils/isOwner.js
- * -----------------
- * Determines whether a message was sent by the bot owner.
- */
 const config = require('../config/config');
 
 function isOwner(msg) {
