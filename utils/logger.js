@@ -1,17 +1,3 @@
-/**
- * utils/logger.js
- * ---------------
- * Centralized logger for the whole application.
- *
- * Using a single shared logger instance means every part of the bot
- * (commands, events, core connection logic) logs in a consistent format,
- * and we only have to configure the logging library in one place.
- *
- * We use 'pino' because Baileys already depends on it internally for its
- * own internal logging, so reusing it avoids pulling in a second logging
- * library just for our application code.
- */
-
 const pino = require('pino');
 
 // pino-pretty is optional eye-candy for development. We try to use it,
