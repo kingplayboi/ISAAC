@@ -1,10 +1,3 @@
-/**
- * utils/warnings.js
- * -----------------
- * Tiny persistence layer for the !warn command. Stores warning counts per
- * group+user in a single JSON file on disk (data/warnings.json), since the
- * bot has no database. Good enough for moderate group sizes/usage.
- */
 const fs = require('fs');
 const path = require('path');
 
