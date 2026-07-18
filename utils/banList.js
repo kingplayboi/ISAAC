@@ -1,10 +1,3 @@
-/**
- * utils/banList.js
- * -----------------
- * Persists a simple list of banned WhatsApp JIDs to a JSON file so bans
- * survive bot restarts. Banned users are blocked from using any command
- * (checked in events/messages.js) but can still send normal messages.
- */
 const fs = require('fs');
 const path = require('path');
 
