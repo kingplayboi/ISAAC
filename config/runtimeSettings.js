@@ -1,11 +1,3 @@
-/**
- * config/runtimeSettings.js
- * ----------------------------
- * Small persisted store for settings that can be changed at runtime via
- * bot commands (prefix, work mode) so they survive restarts instead of
- * silently resetting to the .env defaults every time the process starts.
- */
-
 const fs = require('fs');
 const path = require('path');
 
