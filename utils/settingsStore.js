@@ -1,26 +1,3 @@
-/**
- * utils/settingsStore.js
- * ------------------------
- * Bot-wide (not per-group) key/value settings store.
- *
- * Optional PostgreSQL backing: if DATABASE_URL is set, settings persist to
- * a `bot_settings` table (survives Heroku restarts/redeploys). If it's
- * NOT set, this falls back to the original behavior — a local
- * data/settings.json file — so nothing breaks for anyone not using a DB.
- *
- * The public API (get/set/getAll) stays fully synchronous either way, so
- * no call site elsewhere needs to change. Reads come from an in-memory
- * cache; writes update the cache instantly and persist in the background.
- *
- * ⚠️ Startup race note: when using Postgres, there's a brief window right
- * after boot (usually well under a second) before the DB-loaded settings
- * arrive in the cache. If something calls get() in that window, it'll see
- * the fallback value instead of the persisted one. If you have startup
- * code that truly needs settings before anything else runs, `await
- * settingsStore.ready` first (it resolves once the initial DB load, if
- * any, is done).
- */
-
 const fs = require('fs');
 const path = require('path');
 
