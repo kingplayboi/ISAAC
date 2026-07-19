@@ -247,7 +247,7 @@ console.log('STARTS WITH PREFIX =', text.startsWith(prefix));
         if (text.startsWith(prefix)) {
             await sock.sendMessage(msg.key.remoteJid, {
                 react: {
-                    text: '⚡',
+                    text: '🦇',
                     key: msg.key
                 }
             });
