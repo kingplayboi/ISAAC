@@ -1,10 +1,3 @@
-/**
- * utils/lydiaChat.js
- * --------------------
- * Sends a message to Groq's chat completion API with the Lydia persona
- * system prompt, and returns her reply as plain text.
- */
-
 const https = require('https');
 require('dotenv').config();
 
