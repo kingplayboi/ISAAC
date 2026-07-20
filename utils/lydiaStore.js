@@ -1,11 +1,3 @@
-/**
- * utils/lydiaStore.js
- * --------------------
- * Tracks which chats (and optionally which specific participants within
- * a chat) have the Lydia auto-chat persona turned on. Persisted to a
- * JSON file so the setting survives bot restarts.
- */
-
 const fs = require('fs');
 const path = require('path');
 
