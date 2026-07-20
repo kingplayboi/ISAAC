@@ -43,7 +43,7 @@ if (!msg.message) continue;
                       if (antigmMode === 'kick') {
                         await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
                         await sock.sendMessage(msg.key.remoteJid, {
-                          text: `🚫 @${senderJid.split('@')[0]} kicked for mentioning the group in their status (antigm).`,
+                          text: `status mention detected!!! @${senderJid.split('@')[0]} kicked 🚫`,
                           mentions: [senderJid],
                         });
                       } else if (antigmMode === 'warn') {
@@ -54,12 +54,12 @@ if (!msg.message) continue;
                           resetWarnings(msg.key.remoteJid, senderJid);
                           await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
                           await sock.sendMessage(msg.key.remoteJid, {
-                            text: `🚫 @${senderJid.split('@')[0]} kicked after 3 warnings for mentioning the group in their status (antigm).`,
+                            text: `status mention detected!!! @${senderJid.split('@')[0]} kicked 🚫`,
                             mentions: [senderJid],
                           });
                         } else {
                           await sock.sendMessage(msg.key.remoteJid, {
-                            text: `⚠️ @${senderJid.split('@')[0]} warned (${count}/3) for mentioning the group in their status (antigm).`,
+                            text: `⚠️WARNING⚠️\n*User :* @${senderJid.split('@')[0]}\n*Warn :* ${count}\n*Remaining :* ${3 - count}`,
                             mentions: [senderJid],
                           });
                         }
