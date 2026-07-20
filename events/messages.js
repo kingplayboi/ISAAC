@@ -224,14 +224,14 @@ if (!msg.message) continue;
 if (!text) continue;
 
           if (msg.key.remoteJid.endsWith('@g.us')) {
-              let antilinkOn = settingsStore.get('antilinkall', false);
-              if (!antilinkOn) {
-                antilinkOn = groupSettingsStore.get(msg.key.remoteJid, 'antilink', false);
+              let antilinkMode = groupSettingsStore.get(msg.key.remoteJid, 'antilink', 'off');
+              if (settingsStore.get('antilinkall', false) && antilinkMode === 'off') {
+                antilinkMode = 'on';
               }
 
             const linkRegex = /(https?:\/\/|www\.|chat\.whatsapp\.com\/|wa\.me\/)\S+/i;
 
-            if (antilinkOn && linkRegex.test(text)) {
+            if (antilinkMode !== 'off' && linkRegex.test(text)) {
               const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
               const metadata = await sock.groupMetadata(msg.key.remoteJid);
               const senderJid = msg.key.participant || msg.key.remoteJid;
@@ -244,18 +244,40 @@ if (!text) continue;
                     logger.error(`[antilink] Failed to delete message: ${e.message}`);
                   }
 
-                  try {
-                    await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
-                    await sock.sendMessage(
-                      msg.key.remoteJid,
-                      { text: `🔗🚫 @${senderJid.split('@')[0]} kicked for sending a link.`, mentions: [senderJid] }
-                    );
-                  } catch (e) {
-                    logger.error(`[antilink] Failed to kick sender: ${e.message}`);
-                    await sock.sendMessage(
-                      msg.key.remoteJid,
-                      { text: `🔗 Link deleted from @${senderJid.split('@')[0]}, but I couldn't remove them.`, mentions: [senderJid] }
-                    );
+                  if (antilinkMode === 'kick') {
+                    try {
+                      await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
+                      await sock.sendMessage(
+                        msg.key.remoteJid,
+                        { text: `🔗🚫 @${senderJid.split('@')[0]} kicked for sending a link.`, mentions: [senderJid] }
+                      );
+                    } catch (e) {
+                      logger.error(`[antilink] Failed to kick sender: ${e.message}`);
+                      await sock.sendMessage(
+                        msg.key.remoteJid,
+                        { text: `🔗 Link deleted from @${senderJid.split('@')[0]}, but I couldn't remove them.`, mentions: [senderJid] }
+                      );
+                    }
+                  } else if (antilinkMode === 'warn') {
+                    const { addWarning, resetWarnings } = require('../utils/warnings');
+                    const count = addWarning(msg.key.remoteJid, senderJid);
+                    if (count >= 3) {
+                      resetWarnings(msg.key.remoteJid, senderJid);
+                      try {
+                        await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
+                        await sock.sendMessage(msg.key.remoteJid, {
+                          text: `🔗🚫 @${senderJid.split('@')[0]} kicked after 3 warnings for sending links.`,
+                          mentions: [senderJid],
+                        });
+                      } catch (e) {
+                        logger.error(`[antilink] Failed to kick after warnings: ${e.message}`);
+                      }
+                    } else {
+                      await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⚠️ Link deleted.\n*User:* @${senderJid.split('@')[0]}\n*Warn:* ${count}\n*Remaining:* ${3 - count}`,
+                        mentions: [senderJid],
+                      });
+                    }
                   }
                 }
                 continue;
