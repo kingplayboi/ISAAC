@@ -24,6 +24,55 @@ function registerMessageHandler(sock, commands) {
   console.log('MESSAGE RECEIVED:', msg.key);
       try {
         if (!msg.message) continue;
+if (!msg.message) continue;
+            if (msg.key.remoteJid.endsWith('@g.us')) {
+              const groupSettingsStore = require('../utils/groupSettingsStore');
+              const antigmMode = groupSettingsStore.get(msg.key.remoteJid, 'antigm', 'off');
+
+              if (antigmMode !== 'off' && msg.message?.groupStatusMentionMessage) {
+                const { isOwner } = require('../utils/isOwner');
+                const { isBotAdmin, isSenderAdmin } = require('../utils/isAdmin');
+                const senderJid = msg.key.participant || msg.key.remoteJid;
+
+                if (!isOwner(msg)) {
+                  const metadata = await sock.groupMetadata(msg.key.remoteJid);
+                  if (!isSenderAdmin(metadata, senderJid) && isBotAdmin(sock, metadata)) {
+                    try {
+                      await sock.sendMessage(msg.key.remoteJid, { delete: msg.key });
+
+                      if (antigmMode === 'kick') {
+                        await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
+                        await sock.sendMessage(msg.key.remoteJid, {
+                          text: `🚫 @${senderJid.split('@')[0]} kicked for mentioning the group in their status (antigm).`,
+                          mentions: [senderJid],
+                        });
+                      } else if (antigmMode === 'warn') {
+                        const { addWarning, resetWarnings } = require('../utils/warnings');
+                        const count = addWarning(msg.key.remoteJid, senderJid);
+
+                        if (count >= 3) {
+                          resetWarnings(msg.key.remoteJid, senderJid);
+                          await sock.groupParticipantsUpdate(msg.key.remoteJid, [senderJid], 'remove');
+                          await sock.sendMessage(msg.key.remoteJid, {
+                            text: `🚫 @${senderJid.split('@')[0]} kicked after 3 warnings for mentioning the group in their status (antigm).`,
+                            mentions: [senderJid],
+                          });
+                        } else {
+                          await sock.sendMessage(msg.key.remoteJid, {
+                            text: `⚠️ @${senderJid.split('@')[0]} warned (${count}/3) for mentioning the group in their status (antigm).`,
+                            mentions: [senderJid],
+                          });
+                        }
+                      }
+                    } catch (e) {
+                      logger.error(`[antigm] Failed to delete/act: ${e.message}`);
+                    }
+                    continue;
+                  }
+                }
+              }
+            }
+
 
         const prefix = settingsStore.get('prefix', config.prefix);
         const workType = settingsStore.get('mode', config.WORK_TYPE);
@@ -314,7 +363,6 @@ console.log('STARTS WITH PREFIX =', text.startsWith(prefix));
                 }
               }
             }
-
         if (msg.key.fromMe && !text.startsWith(prefix)) continue;
         if (config.debugMessages) {
           logger.info(`[message] ${msg.key.remoteJid}: ${text}`);
