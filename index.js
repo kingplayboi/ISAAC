@@ -94,6 +94,42 @@ const wasAlreadyRegistered = state.creds.registered;
 
     // Always connect using the latest known WhatsApp Web protocol version
     // to reduce the chance of connection issues caused by an outdated version.
+let decryptFailureTimestamps = [];
+const DECRYPT_FAILURE_THRESHOLD = 8;   // failures...
+const DECRYPT_FAILURE_WINDOW_MS = 30000; // ...within this many ms
+
+function wrapBaileysLogger(baseLogger, onDegradedConnection) {
+  const isDecryptFailureMsg = (msg) =>
+    typeof msg === 'string' &&
+    (msg.includes('failed to decrypt message') ||
+      msg.includes('Bad MAC') ||
+      msg.includes('No matching sessions found') ||
+      msg.includes('No session record') ||
+      msg.includes('Invalid PreKey'));
+
+  const wrapped = Object.create(baseLogger);
+
+  wrapped.error = (...args) => {
+    baseLogger.error(...args);
+    const msgArg = args.find((a) => typeof a === 'string') ||
+      (typeof args[0] === 'object' && (args[0]?.msg || args[0]?.err?.message));
+
+    if (isDecryptFailureMsg(msgArg)) {
+      const now = Date.now();
+      decryptFailureTimestamps.push(now);
+      decryptFailureTimestamps = decryptFailureTimestamps.filter((t) => now - t < DECRYPT_FAILURE_WINDOW_MS);
+
+      if (decryptFailureTimestamps.length >= DECRYPT_FAILURE_THRESHOLD) {
+        decryptFailureTimestamps = [];
+        onDegradedConnection();
+      }
+    }
+  };
+
+  wrapped.child = (bindings) => wrapBaileysLogger(baseLogger.child(bindings), onDegradedConnection);
+
+  return wrapped;
+}
     const { version } = await fetchLatestBaileysVersion();
 
     // Ask for a phone number BEFORE creating the socket, so there's no race
@@ -117,7 +153,17 @@ const wasAlreadyRegistered = state.creds.registered;
     const sock = makeWASocket({
       version,
       auth: state,
-      logger: logger.child ? logger.child({ module: 'baileys' }) : logger,
+      logger: wrapBaileysLogger(
+        logger.child ? logger.child({ module: 'baileys' }) : logger,
+        () => {
+          logger.warn('⚠️ Detected repeated decrypt failures — forcing a clean reconnect.');
+          try {
+            sock.end(new Error('Forced reconnect due to repeated decrypt failures'));
+          } catch (e) {
+            logger.error(`[decryptRecovery] Failed to end socket cleanly: ${e.message}`);
+          }
+        }
+      ),
       // printQRInTerminal is deprecated in newer Baileys versions; we handle
       // QR rendering ourselves inside events/connection.js instead.
       // defaultQueryTimeoutMs: undefined fixes a known Baileys bug where
