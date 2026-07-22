@@ -21,11 +21,6 @@
   
   
 
-<h1 align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=25&duration=3000&color=FF0000&background=000000&center=true&vCenter=true&width=600&lines=🚀+ISAAC+EXCLUSIVE;🔥+WhatsApp+Bot;💻+By+Kingplayboi+Isaac" alt="Typing Animation">
-</h1>
-
-
 <h1>𝐒𝐄𝐓 𝐔𝐏</h1>
 
   
