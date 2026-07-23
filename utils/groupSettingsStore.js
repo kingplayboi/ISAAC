@@ -61,7 +61,7 @@ function set(jid, key, value) {
         db.query(
             `INSERT INTO group_settings (jid, key, value) VALUES ($1, $2, $3)
              ON CONFLICT (jid, key) DO UPDATE SET value = EXCLUDED.value`,
-            [jid, key, value]
+            [jid, key, JSON.stringify(value)]
         ).catch((err) => {
             console.error('[groupSettingsStore] Failed to persist to PostgreSQL:', err.message);
         });

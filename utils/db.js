@@ -32,10 +32,31 @@ async function ensureSchema() {
                 CREATE TABLE IF NOT EXISTS group_settings (
                     jid   TEXT NOT NULL,
                     key   TEXT NOT NULL,
-                    value BOOLEAN NOT NULL,
+                    value JSONB NOT NULL,
                     PRIMARY KEY (jid, key)
                 );
             `)
+            .then(() =>
+                // Migrate any existing table that still has the old BOOLEAN
+                // column (from before antigm/antilink needed string modes
+                // like 'kick'/'warn'). Safe to run every startup: it's a
+                // no-op once the column is already JSONB.
+                getPool().query(`
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name = 'group_settings'
+                              AND column_name = 'value'
+                              AND data_type = 'boolean'
+                        ) THEN
+                            ALTER TABLE group_settings
+                                ALTER COLUMN value TYPE JSONB
+                                USING to_jsonb(value);
+                        END IF;
+                    END $$;
+                `)
+            )
             .then(() => {
                 console.log('✅ Connected to PostgreSQL, schema ready');
             })
