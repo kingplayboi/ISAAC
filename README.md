@@ -40,11 +40,6 @@
  [![Deploy](https://img.shields.io/badge/Deploy-ISAAC-7c3aed?style=for-the-badge&logo=heroku&logoColor=white)
 ](https://isaac-verify.vercel.app)
 
-<p align="center">
-  <a href="https://heroku.com/deploy?template=https://github.com/kingplayboi/ISAAC">
-    <img src="https://www.herokucdn.com/deploy/button.svg" alt="Deploy to Heroku">
-  </a>
-</p>
 
 
 ## PANEL DEPLOYMENT 
