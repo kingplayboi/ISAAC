@@ -28,3 +28,7 @@ config/sudoList.json
 temp_pair_sessions/
 .deployed-commit
 commands/
+
+config/apis.js
+lib/wormgpt.js
+src-clean/
