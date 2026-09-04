@@ -32,3 +32,4 @@ commands/
 config/apis.js
 lib/wormgpt.js
 src-clean/
+scripts/
