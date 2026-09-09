@@ -17,6 +17,7 @@
   "author": "𝗜𝗦𝗔𝗔𝗖",
   "license": "MIT",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@hapi/boom": "^10.0.1",
     "@img/sharp-wasm32": "^0.35.3",
     "@whiskeysockets/baileys": "^7.0.0-rc13",
@@ -58,6 +59,7 @@
     "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
+    "javascript-obfuscator": "^5.6.0",
     "nodemon": "^3.1.7"
   },
   "engines": {
