@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { resolveIds } = require('./isSudo');
 
 const BAN_FILE = path.join(__dirname, '..', 'data', 'banned.json');
 
@@ -24,19 +23,13 @@ function getBannedList() {
     }
 }
 
-function isBanned(msgKeyOrJid) {
+function isBanned(ids) {
     const list = getBannedList();
-    const ids = typeof msgKeyOrJid === 'string'
-        ? resolveIds({ participant: msgKeyOrJid, remoteJid: msgKeyOrJid })
-        : resolveIds(msgKeyOrJid);
-    return ids.some((c) => list.includes(c.id));
+    return ids.some((i) => list.includes(i.id));
 }
 
-function banUser(msgKeyOrJid) {
+function banUser(ids) {
     const list = getBannedList();
-    const ids = typeof msgKeyOrJid === 'string'
-        ? resolveIds({ participant: msgKeyOrJid, remoteJid: msgKeyOrJid })
-        : resolveIds(msgKeyOrJid);
     let changed = false;
     for (const { id } of ids) {
         if (!list.includes(id)) { list.push(id); changed = true; }
@@ -45,11 +38,8 @@ function banUser(msgKeyOrJid) {
     return list;
 }
 
-function unbanUser(msgKeyOrJid) {
-    const ids = typeof msgKeyOrJid === 'string'
-        ? resolveIds({ participant: msgKeyOrJid, remoteJid: msgKeyOrJid })
-        : resolveIds(msgKeyOrJid);
-    const idSet = ids.map((c) => c.id);
+function unbanUser(ids) {
+    const idSet = ids.map((i) => i.id);
     const list = getBannedList().filter((id) => !idSet.includes(id));
     fs.writeFileSync(BAN_FILE, JSON.stringify(list, null, 2));
     return list;
