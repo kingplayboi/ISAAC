@@ -1,48 +1,57 @@
 const fs = require('fs');
 const path = require('path');
 
-const BAN_FILE = path.join(__dirname, '..', 'data', 'banned.json');
+const banPath = path.join(__dirname, '../data/banned.json');
 
-function ensureFile() {
-    const dir = path.dirname(BAN_FILE);
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-    if (!fs.existsSync(BAN_FILE)) {
-        fs.writeFileSync(BAN_FILE, JSON.stringify([], null, 2));
-    }
+function load() {
+  if (!fs.existsSync(banPath)) return [];
+  const raw = JSON.parse(fs.readFileSync(banPath, 'utf8'));
+  return raw.map((entry) => {
+    if (typeof entry === 'string') return { ids: [{ id: entry, type: 'pn' }] };
+    if (entry.id && !entry.ids) return { ids: [{ id: entry.id, type: entry.type || 'pn' }] };
+    return entry;
+  });
 }
 
-function getBannedList() {
-    ensureFile();
-    try {
-        const raw = fs.readFileSync(BAN_FILE, 'utf8');
-        return JSON.parse(raw);
-    } catch (e) {
-        return [];
-    }
+function save(list) {
+  fs.writeFileSync(banPath, JSON.stringify(list, null, 2));
+}
+
+function findEntryByAnyId(list, ids) {
+  const idSet = ids.map((i) => i.id);
+  return list.findIndex((entry) => entry.ids.some((stored) => idSet.includes(stored.id)));
 }
 
 function isBanned(ids) {
-    const list = getBannedList();
-    return ids.some((i) => list.includes(i.id));
+  return findEntryByAnyId(load(), ids) !== -1;
 }
 
 function banUser(ids) {
-    const list = getBannedList();
-    let changed = false;
-    for (const { id } of ids) {
-        if (!list.includes(id)) { list.push(id); changed = true; }
+  const list = load();
+  const idx = findEntryByAnyId(list, ids);
+  if (idx !== -1) {
+    const existing = list[idx];
+    for (const newId of ids) {
+      if (!existing.ids.some((i) => i.id === newId.id)) existing.ids.push({ id: newId.id, type: newId.type });
     }
-    if (changed) fs.writeFileSync(BAN_FILE, JSON.stringify(list, null, 2));
-    return list;
+  } else {
+    list.push({ ids: ids.map((i) => ({ id: i.id, type: i.type })) });
+  }
+  save(list);
 }
 
 function unbanUser(ids) {
-    const idSet = ids.map((i) => i.id);
-    const list = getBannedList().filter((id) => !idSet.includes(id));
-    fs.writeFileSync(BAN_FILE, JSON.stringify(list, null, 2));
-    return list;
+  const idSet = ids.map((i) => i.id);
+  save(load().filter((entry) => !entry.ids.some((stored) => idSet.includes(stored.id))));
 }
 
-module.exports = { getBannedList, isBanned, banUser, unbanUser };
+function findBanEntry(ids) {
+  const idSet = ids.map((i) => i.id);
+  return load().find((entry) => entry.ids.some((i) => idSet.includes(i.id)));
+}
+
+function getBannedList() {
+  return load();
+}
+
+module.exports = { isBanned, banUser, unbanUser, findBanEntry, getBannedList };
