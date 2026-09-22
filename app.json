@@ -6,8 +6,8 @@
   "keywords": ["whatsapp", "bot", "isaac", "baileys"],
   "success_url": "/",
   "buildpacks": [
-  { "url": "heroku/nodejs" }
-],
+    { "url": "heroku/nodejs" }
+  ],
   "addons": [
     {
       "plan": "heroku-postgresql:essential-0",
@@ -35,20 +35,10 @@
       "value": "",
       "required": true
     },
-    "PREFIX": {
+    "BOT_PREFIX": {
       "description": "Command prefix for the bot",
       "value": ".",
       "required": true
-    },
-    "BOT_NAME": {
-      "description": "Display name for the bot",
-      "value": "ISAAC-MD",
-      "required": false
-    },
-    "OWNER_NAME": {
-      "description": "Your name, shown in bot info/menu",
-      "value": "Isaac",
-      "required": false
     },
     "OWNER_NUMBER": {
       "description": "Your WhatsApp number with country code, no + or spaces (e.g. 254754574642)",
@@ -59,31 +49,6 @@
       "description": "Your Heroku account API key (dashboard.heroku.com/account → API Key). Required if you want to use .update/.updatenow to check and trigger redeploys from WhatsApp.",
       "value": "",
       "required": true
-    },
-    "STICKER_NAME": {
-      "description": "Pack name used on stickers created by the bot",
-      "value": "ISAAC-MD",
-      "required": false
-    },
-    "AUTO_READ_STATUS": {
-      "description": "Automatically view contacts' WhatsApp statuses (true/false)",
-      "value": "true",
-      "required": false
-    },
-    "AUTO_REACT": {
-      "description": "Automatically react to incoming messages (true/false)",
-      "value": "false",
-      "required": false
-    },
-    "PUBLIC_MODE": {
-      "description": "If true, anyone can use commands. If false, only the owner can (true/false)",
-      "value": "true",
-      "required": false
-    },
-    "TIMEZONE": {
-      "description": "Timezone used for scheduled features",
-      "value": "Africa/Nairobi",
-      "required": false
     }
   }
 }
