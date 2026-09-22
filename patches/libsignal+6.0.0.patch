@@ -1,0 +1,35 @@
+diff --git a/node_modules/libsignal/src/session_record.js b/node_modules/libsignal/src/session_record.js
+index 7626a39..f1ff4b8 100644
+--- a/node_modules/libsignal/src/session_record.js
++++ b/node_modules/libsignal/src/session_record.js
+@@ -267,10 +267,10 @@ class SessionRecord {
+ 
+     closeSession(session) {
+         if (this.isClosed(session)) {
+-            console.warn("Session already closed", session);
++            console.warn("Session already closed");
+             return;
+         }
+-        console.info("Closing session:", session);
++        // console.info removed — was leaking session key material into logs
+         session.indexInfo.closed = Date.now();
+     }
+ 
+@@ -278,7 +278,7 @@ class SessionRecord {
+         if (!this.isClosed(session)) {
+             console.warn("Session already open");
+         }
+-        console.info("Opening session:", session);
++        // console.info("Opening session:", session);
+         session.indexInfo.closed = -1;
+     }
+ 
+@@ -298,7 +298,7 @@ class SessionRecord {
+                 }
+             }
+             if (oldestKey) {
+-                console.info("Removing old closed session:", oldestSession);
++                // console.info("Removing old closed session:", oldestSession);
+                 delete this.sessions[oldestKey];
+             } else {
+                 throw new Error('Corrupt sessions object');

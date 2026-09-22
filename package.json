@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
+    "postinstall": "patch-package",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
@@ -43,6 +44,7 @@
     "node-fetch": "^2.7.0",
     "node-id3": "^0.2.9",
     "node-webpmux": "^3.2.1",
+    "patch-package": "^8.0.1",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.20.1",
