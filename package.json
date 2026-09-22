@@ -5,9 +5,12 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "postinstall": "patch-package",
+    "postinstall": "patch-package --patch-dir config/patches",
     "start": "node index.js",
     "dev": "nodemon index.js"
+  },
+  "patch-package": {
+    "patchDir": "config/patches/"
   },
   "keywords": [
     "whatsapp",
