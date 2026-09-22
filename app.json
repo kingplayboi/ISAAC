@@ -30,14 +30,14 @@
       "value": "",
       "required": true
     },
-    "SESSION_ID": {
-      "description": "Your WhatsApp session string, generated at https://kingpin-sjlx.onrender.com (QR CODE or PAIR CODE)",
+    "HEROKU_API_KEY": {
+      "description": "Your Heroku account API key (dashboard.heroku.com/account → API Key). Required if you want to use .update/.updatenow to check and trigger redeploys from WhatsApp.",
       "value": "",
       "required": true
     },
-    "BOT_PREFIX": {
-      "description": "Command prefix for the bot",
-      "value": ".",
+    "SESSION_ID": {
+      "description": "Your WhatsApp session string, generated at https://kingpin-sjlx.onrender.com (QR CODE or PAIR CODE)",
+      "value": "",
       "required": true
     },
     "OWNER_NUMBER": {
@@ -45,9 +45,9 @@
       "value": "254754574642",
       "required": true
     },
-    "HEROKU_API_KEY": {
-      "description": "Your Heroku account API key (dashboard.heroku.com/account → API Key). Required if you want to use .update/.updatenow to check and trigger redeploys from WhatsApp.",
-      "value": "",
+    "BOT_PREFIX": {
+      "description": "Command prefix for the bot",
+      "value": ".",
       "required": true
     }
   }
