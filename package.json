@@ -23,7 +23,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hapi/boom": "^10.0.1",
-    "@img/sharp-wasm32": "^0.35.3",
     "@whiskeysockets/baileys": "^7.0.0-rc13",
     "acrcloud": "^1.4.0",
     "axios": "^1.18.1",
@@ -59,9 +58,7 @@
     "socket.io": "^4.8.3",
     "wa-sticker-formatter": "^4.4.4",
     "xlsx": "^0.18.5",
-    "youtube-dl-exec": "^3.1.8",
-    "yt-search": "^2.13.1",
-    "ytdl-core": "^4.11.5"
+    "yt-search": "^2.13.1"
   },
   "devDependencies": {
     "javascript-obfuscator": "^5.6.0",
