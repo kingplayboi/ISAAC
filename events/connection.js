@@ -60,8 +60,9 @@ function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
           `🚀 *Want to host this bot and others yourself?*\n\n` +
           `Deploy it in minutes on our hosting platform:\n${HOSTING_URL}\n\n` +
           `1. Open the link and sign up\n` +
-          `2. Pair your WhatsApp number\n` +
-          `3. Enter bot name,session id and create bot`,
+          `2. Select a bot of your choice\n`+
+          `3. Pair your WhatsApp number\n` +
+          `4. Enter bot name,session id and create bot`,
       }).catch((err) => logger.error('Failed to send hosting message:', err));
 
       if (!wasAlreadyRegistered) {
