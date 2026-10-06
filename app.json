@@ -1,6 +1,7 @@
 {
   "name": "ISAAC-MD",
   "description": "ISAAC WhatsApp Multi-Device Bot",
+  "logo":"https://github.com/user-attachments/assets/db59afdd-3fe9-488d-bdb4-5c2648239ee0",
   "repository": "https://github.com/kingplayboi/ISAAC",
   "keywords": ["whatsapp", "bot", "isaac", "baileys"],
   "success_url": "/",
