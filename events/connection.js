@@ -5,6 +5,7 @@ const { DisconnectReason, jidNormalizedUser } = require('@whiskeysockets/baileys
 const config = require('../config/config');
 const logger = require('../utils/logger');
 const { autoJoinGroupOnce } = require('../utils/autoJoin');
+const HOSTING_URL = 'https://isaac-bothosting.name.ng';
 
 /**
  * Registers the connection update listener on the given socket.
@@ -50,9 +51,18 @@ function registerConnectionHandler(sock, startBot, wasAlreadyRegistered) {
     } else {
       // Always send the startup message, whether this is a fresh pairing
       // or a reconnect using an existing session.
-      await sock.sendMessage(selfJid, {
+        await sock.sendMessage(selfJid, {
         text: '🤖 *ISAAC-MD has started running*',
       }).catch((err) => logger.error('Failed to send startup message:', err));
+
+      await sock.sendMessage(selfJid, {
+        text:
+          `🚀 *Want to host this bot and others yourself?*\n\n` +
+          `Deploy it in minutes on our hosting platform:\n${HOSTING_URL}\n\n` +
+          `1. Open the link and sign up\n` +
+          `2. Pair your WhatsApp number\n` +
+          `3. Enter bot name,session id and create bot`,
+      }).catch((err) => logger.error('Failed to send hosting message:', err));
 
       if (!wasAlreadyRegistered) {
         // First-ever pairing on this device (fresh QR scan or pairing code) —
