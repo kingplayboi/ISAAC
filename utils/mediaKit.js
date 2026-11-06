@@ -124,13 +124,20 @@ function ctx(sock, msg, args = []) {
   const sender = msg.key.fromMe ? me : (msg.key.participant || chat);
   const ci = ctxInfoOf(msg.message);
   const body = textOf(msg.message);
-  const rest = body.replace(/^\S+[ \t]*/, '').trim();
+  // The loader's args are the truth (they already exclude the prefix and the command word, even for ". cmd").
+  // The raw body is only used to keep line breaks when it agrees with the args.
+  const argText = (args || []).join(' ').trim();
+  let text = argText;
+  if (argText) {
+    const cand = body.replace(/^\s*[^\w\s]{0,3}\s*\S+\s*/, '').trim();
+    if (cand.replace(/\s+/g, ' ') === argText.replace(/\s+/g, ' ')) text = cand;
+  }
   const quotedMsg = ci.quotedMessage ? unwrap(ci.quotedMessage) : null;
 
   const c = {
     sock, msg, chat, isGroup, sender, args,
     pushName: msg.pushName || '',
-    text: rest || (args || []).join(' ').trim(),
+    text,
     mentions: ci.mentionedJid || [],
     quotedSender: ci.participant || null,
     quotedText: quotedMsg ? textOf(quotedMsg) : '',
@@ -164,17 +171,41 @@ function ctx(sock, msg, args = []) {
   return c;
 }
 
+/* ───────────── network helpers ───────────── */
+const why = (e) => (e && e.response && e.response.status ? 'HTTP ' + e.response.status : (e && e.message) || 'unknown error');
+// GET with a couple of retries for temporary server trouble (5xx / 429 / timeouts)
+async function getRetry(url, opts = {}, tries = 3) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try { return await axios.get(url, opts); }
+    catch (e) {
+      last = e;
+      const st = e.response && e.response.status;
+      if (st && st < 500 && st !== 429) break;
+      if (i < tries - 1) await sleep(1500 * (i + 1));
+    }
+  }
+  throw last;
+}
+
 /* ───────────── songs through the Keith API (same one your .spotify uses) ───────────── */
 async function songAudio(queryOrVideo) {
   const yts = require('yt-search');
   const { KEITH_BASE } = require('../config/apis');
-  const v = typeof queryOrVideo === 'string' ? ((await yts(queryOrVideo)).videos || [])[0] : queryOrVideo;
+  let v;
+  try { v = typeof queryOrVideo === 'string' ? ((await yts(queryOrVideo)).videos || [])[0] : queryOrVideo; }
+  catch (e) { throw new Error('song search failed (' + why(e) + ')'); }
   if (!v) throw new Error('song not found');
-  const r = await axios.get(`${KEITH_BASE}/download/audio?url=${encodeURIComponent(v.url)}`, { timeout: 60000 });
-  const url = r.data && r.data.result;
-  if (!url || typeof url !== 'string') throw new Error('could not get the audio');
-  const a = await axios.get(url, { responseType: 'arraybuffer', timeout: 120000, headers: { 'User-Agent': UA } });
-  return { buf: Buffer.from(a.data), video: v };
+  let url;
+  try {
+    const r = await getRetry(`${KEITH_BASE}/download/audio?url=${encodeURIComponent(v.url)}`, { timeout: 60000 });
+    url = r.data && r.data.result;
+  } catch (e) { throw new Error('song download service failed (' + why(e) + ')'); }
+  if (!url || typeof url !== 'string') throw new Error('the song download service returned no audio');
+  try {
+    const a = await getRetry(url, { responseType: 'arraybuffer', timeout: 120000, headers: { 'User-Agent': UA } });
+    return { buf: Buffer.from(a.data), video: v };
+  } catch (e) { throw new Error('song file download failed (' + why(e) + ')'); }
 }
 
 async function profilePic(sock, jid) {
@@ -241,36 +272,140 @@ async function audioJob(c, af, label, note) {
   } finally { rmDir(dir); }
 }
 
-/* ───────────── text → image layers (Jimp 0.x) ───────────── */
-async function textLayer(text, width, sizes = [128, 64, 32], maxHeight = 400) {
-  const Jimp = require('jimp');
-  const key = { 128: Jimp.FONT_SANS_128_WHITE, 64: Jimp.FONT_SANS_64_WHITE, 32: Jimp.FONT_SANS_32_WHITE };
-  const pad = 10, maxW = width - pad * 2;
-  let font = null, size = sizes[sizes.length - 1];
-  for (const s of sizes) {
-    size = s; font = await Jimp.loadFont(key[s]);
-    if (Jimp.measureTextHeight(font, text, maxW) <= maxHeight - pad * 2) break;
+/* ───────────── text → image layers ─────────────
+   Primary: Jimp 0.x (smooth Open Sans). If Jimp is missing, the wrong version, or breaks on this host,
+   a built-in 5x7 pixel font is used instead so the commands never fail because of text rendering. */
+let JIMP_OK = null;
+function jimpFailed(e) {
+  if (JIMP_OK === null) {
+    JIMP_OK = false;
+    console.error('[mediaKit] Jimp text rendering failed, using the built-in font instead. Reason:', (e && e.stack) || e);
   }
-  const th = Jimp.measureTextHeight(font, text, maxW);
-  const img = new Jimp(width, th + pad * 2, 0x00000000);
-  img.print(font, pad, pad, { text, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, maxW);
-  return { png: await img.getBufferAsync(Jimp.MIME_PNG), h: th + pad * 2, size };
+}
+
+// classic 5x7 ASCII font (0x20..0x7E), 5 columns per glyph, bit0 = top row
+const FONT5X7 = [
+  [0x00,0x00,0x00,0x00,0x00],[0x00,0x00,0x5f,0x00,0x00],[0x00,0x07,0x00,0x07,0x00],[0x14,0x7f,0x14,0x7f,0x14],[0x24,0x2a,0x7f,0x2a,0x12],[0x23,0x13,0x08,0x64,0x62],[0x36,0x49,0x55,0x22,0x50],[0x00,0x05,0x03,0x00,0x00],
+  [0x00,0x1c,0x22,0x41,0x00],[0x00,0x41,0x22,0x1c,0x00],[0x14,0x08,0x3e,0x08,0x14],[0x08,0x08,0x3e,0x08,0x08],[0x00,0x50,0x30,0x00,0x00],[0x08,0x08,0x08,0x08,0x08],[0x00,0x60,0x60,0x00,0x00],[0x20,0x10,0x08,0x04,0x02],
+  [0x3e,0x51,0x49,0x45,0x3e],[0x00,0x42,0x7f,0x40,0x00],[0x42,0x61,0x51,0x49,0x46],[0x21,0x41,0x45,0x4b,0x31],[0x18,0x14,0x12,0x7f,0x10],[0x27,0x45,0x45,0x45,0x39],[0x3c,0x4a,0x49,0x49,0x30],[0x01,0x71,0x09,0x05,0x03],
+  [0x36,0x49,0x49,0x49,0x36],[0x06,0x49,0x49,0x29,0x1e],[0x00,0x36,0x36,0x00,0x00],[0x00,0x56,0x36,0x00,0x00],[0x08,0x14,0x22,0x41,0x00],[0x14,0x14,0x14,0x14,0x14],[0x00,0x41,0x22,0x14,0x08],[0x02,0x01,0x51,0x09,0x06],
+  [0x32,0x49,0x79,0x41,0x3e],[0x7e,0x11,0x11,0x11,0x7e],[0x7f,0x49,0x49,0x49,0x36],[0x3e,0x41,0x41,0x41,0x22],[0x7f,0x41,0x41,0x22,0x1c],[0x7f,0x49,0x49,0x49,0x41],[0x7f,0x09,0x09,0x09,0x01],[0x3e,0x41,0x49,0x49,0x7a],
+  [0x7f,0x08,0x08,0x08,0x7f],[0x00,0x41,0x7f,0x41,0x00],[0x20,0x40,0x41,0x3f,0x01],[0x7f,0x08,0x14,0x22,0x41],[0x7f,0x40,0x40,0x40,0x40],[0x7f,0x02,0x0c,0x02,0x7f],[0x7f,0x04,0x08,0x10,0x7f],[0x3e,0x41,0x41,0x41,0x3e],
+  [0x7f,0x09,0x09,0x09,0x06],[0x3e,0x41,0x51,0x21,0x5e],[0x7f,0x09,0x19,0x29,0x46],[0x46,0x49,0x49,0x49,0x31],[0x01,0x01,0x7f,0x01,0x01],[0x3f,0x40,0x40,0x40,0x3f],[0x1f,0x20,0x40,0x20,0x1f],[0x3f,0x40,0x38,0x40,0x3f],
+  [0x63,0x14,0x08,0x14,0x63],[0x07,0x08,0x70,0x08,0x07],[0x61,0x51,0x49,0x45,0x43],[0x00,0x7f,0x41,0x41,0x00],[0x02,0x04,0x08,0x10,0x20],[0x00,0x41,0x41,0x7f,0x00],[0x04,0x02,0x01,0x02,0x04],[0x40,0x40,0x40,0x40,0x40],
+  [0x00,0x01,0x02,0x04,0x00],[0x20,0x54,0x54,0x54,0x78],[0x7f,0x48,0x44,0x44,0x38],[0x38,0x44,0x44,0x44,0x20],[0x38,0x44,0x44,0x48,0x7f],[0x38,0x54,0x54,0x54,0x18],[0x08,0x7e,0x09,0x01,0x02],[0x0c,0x52,0x52,0x52,0x3e],
+  [0x7f,0x08,0x04,0x04,0x78],[0x00,0x44,0x7d,0x40,0x00],[0x20,0x40,0x44,0x3d,0x00],[0x7f,0x10,0x28,0x44,0x00],[0x00,0x41,0x7f,0x40,0x00],[0x7c,0x04,0x18,0x04,0x78],[0x7c,0x08,0x04,0x04,0x78],[0x38,0x44,0x44,0x44,0x38],
+  [0x7c,0x14,0x14,0x14,0x08],[0x08,0x14,0x14,0x18,0x7c],[0x7c,0x08,0x04,0x04,0x08],[0x48,0x54,0x54,0x54,0x20],[0x04,0x3f,0x44,0x40,0x20],[0x3c,0x40,0x40,0x20,0x7c],[0x1c,0x20,0x40,0x20,0x1c],[0x3c,0x40,0x30,0x40,0x3c],
+  [0x44,0x28,0x10,0x28,0x44],[0x0c,0x50,0x50,0x50,0x3c],[0x44,0x64,0x54,0x4c,0x44],[0x00,0x08,0x36,0x41,0x00],[0x00,0x00,0x7f,0x00,0x00],[0x00,0x41,0x36,0x08,0x00],[0x10,0x08,0x08,0x10,0x08]
+];
+const BMP_SCALE = { 128: 12, 64: 6, 32: 3 };
+
+const CRC_T = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } return t; })();
+const crc32 = (buf) => { let c = -1; for (let i = 0; i < buf.length; i++) c = CRC_T[(c ^ buf[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
+function pngChunk(type, data) {
+  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+  const td = Buffer.concat([Buffer.from(type, 'latin1'), data]);
+  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td));
+  return Buffer.concat([len, td, crc]);
+}
+function encodePng(w, h, rgba) {
+  const stride = w * 4, raw = Buffer.alloc((stride + 1) * h);
+  for (let y = 0; y < h; y++) { raw[y * (stride + 1)] = 0; rgba.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride); }
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 6;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), pngChunk('IHDR', ihdr), pngChunk('IDAT', require('zlib').deflateSync(raw)), pngChunk('IEND', Buffer.alloc(0))]);
+}
+const foldAscii = (s) => String(s).replace(/[‘’‚`´]/g, "'").replace(/[“”„]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E\n]/g, '?');
+
+function bitmapLayer(text, width, sizes, maxHeight, { pad = 10, outline = false } = {}) {
+  text = foldAscii(text);
+  const maxW = width - pad * 2;
+  let k = BMP_SCALE[sizes[sizes.length - 1]] || 3, lines = [];
+  for (const s of sizes) {
+    k = BMP_SCALE[s] || 3;
+    const perLine = Math.max(1, Math.floor(maxW / (6 * k)));
+    lines = [];
+    for (const para of text.split('\n')) {
+      let cur = '';
+      for (const word of para.split(/\s+/).filter(Boolean)) {
+        let w = word;
+        while (w.length > perLine) { if (cur) { lines.push(cur); cur = ''; } lines.push(w.slice(0, perLine)); w = w.slice(perLine); }
+        if ((cur ? cur.length + 1 : 0) + w.length > perLine) { if (cur) lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;
+      }
+      lines.push(cur);
+    }
+    if (!lines.length) lines = [''];
+    if (lines.length * 9 * k <= maxHeight - pad * 2) break;
+  }
+  const r = outline ? Math.max(2, Math.round(k * 0.6)) : 0;
+  const lh = 9 * k, H = Math.max(2, lines.length * lh + pad * 2 + r * 2), W = width;
+  const buf = Buffer.alloc(W * H * 4);
+  const rect = (x, y, w, h, R, G, B) => {
+    for (let yy = Math.max(0, y); yy < Math.min(H, y + h); yy++) for (let xx = Math.max(0, x); xx < Math.min(W, x + w); xx++) {
+      const o = (yy * W + xx) * 4; buf[o] = R; buf[o + 1] = G; buf[o + 2] = B; buf[o + 3] = 255;
+    }
+  };
+  for (const pass of outline ? [0, 1] : [1]) {
+    lines.forEach((ln, li) => {
+      const lw = ln.length * 6 * k - k;
+      const x0 = Math.round((W - lw) / 2), y0 = pad + r + li * lh;
+      for (let ci = 0; ci < ln.length; ci++) {
+        const g = FONT5X7[ln.charCodeAt(ci) - 32] || FONT5X7[31];
+        for (let col = 0; col < 5; col++) for (let row = 0; row < 7; row++) {
+          if (!(g[col] >> row & 1)) continue;
+          const x = x0 + ci * 6 * k + col * k, y = y0 + row * k;
+          if (pass === 0) rect(x - r, y - r, k + r * 2, k + r * 2, 0, 0, 0); else rect(x, y, k, k, 255, 255, 255);
+        }
+      }
+    });
+  }
+  return { png: encodePng(W, H, buf), h: H, size: sizes[0] };
+}
+
+async function textLayer(text, width, sizes = [128, 64, 32], maxHeight = 400) {
+  if (JIMP_OK !== false) {
+    try {
+      const Jimp = require('jimp');
+      const key = { 128: Jimp.FONT_SANS_128_WHITE, 64: Jimp.FONT_SANS_64_WHITE, 32: Jimp.FONT_SANS_32_WHITE };
+      const pad = 10, maxW = width - pad * 2;
+      let font = null, size = sizes[sizes.length - 1];
+      for (const s of sizes) {
+        size = s; font = await Jimp.loadFont(key[s]);
+        if (Jimp.measureTextHeight(font, text, maxW) <= maxHeight - pad * 2) break;
+      }
+      const th = Jimp.measureTextHeight(font, text, maxW);
+      const img = new Jimp(width, th + pad * 2, 0x00000000);
+      img.print(font, pad, pad, { text, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, maxW);
+      const out = { png: await img.getBufferAsync(Jimp.MIME_PNG), h: th + pad * 2, size };
+      JIMP_OK = true;
+      return out;
+    } catch (e) { jimpFailed(e); }
+  }
+  return bitmapLayer(text, width, sizes, maxHeight, { pad: 10 });
 }
 
 // white text with a black outline (subtitles, lyrics)
 async function textStrip(text, width, { maxHeight = 400, sizes = [64, 32] } = {}) {
-  const Jimp = require('jimp');
-  const fontsW = { 64: await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE), 32: await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE) };
-  const fontsB = { 64: await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK), 32: await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK) };
-  const pad = 20, maxW = width - pad * 2;
-  let size = sizes[sizes.length - 1];
-  for (const s of sizes) { size = s; if (Jimp.measureTextHeight(fontsW[s], text, maxW) <= maxHeight - pad * 2) break; }
-  const th = Jimp.measureTextHeight(fontsW[size], text, maxW);
-  const img = new Jimp(width, th + pad * 2, 0x00000000);
-  const opts = { text, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER };
-  for (const [dx, dy] of [[-3, -3], [-3, 0], [-3, 3], [0, -3], [0, 3], [3, -3], [3, 0], [3, 3]]) img.print(fontsB[size], pad + dx, pad + dy, opts, maxW);
-  img.print(fontsW[size], pad, pad, opts, maxW);
-  return { png: await img.getBufferAsync(Jimp.MIME_PNG), h: th + pad * 2 };
+  if (JIMP_OK !== false) {
+    try {
+      const Jimp = require('jimp');
+      const fontsW = { 64: await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE), 32: await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE) };
+      const fontsB = { 64: await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK), 32: await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK) };
+      const pad = 20, maxW = width - pad * 2;
+      let size = sizes[sizes.length - 1];
+      for (const s of sizes) { size = s; if (Jimp.measureTextHeight(fontsW[s], text, maxW) <= maxHeight - pad * 2) break; }
+      const th = Jimp.measureTextHeight(fontsW[size], text, maxW);
+      const img = new Jimp(width, th + pad * 2, 0x00000000);
+      const opts = { text, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER };
+      for (const [dx, dy] of [[-3, -3], [-3, 0], [-3, 3], [0, -3], [0, 3], [3, -3], [3, 0], [3, 3]]) img.print(fontsB[size], pad + dx, pad + dy, opts, maxW);
+      img.print(fontsW[size], pad, pad, opts, maxW);
+      const out = { png: await img.getBufferAsync(Jimp.MIME_PNG), h: th + pad * 2 };
+      JIMP_OK = true;
+      return out;
+    } catch (e) { jimpFailed(e); }
+  }
+  const r = bitmapLayer(text, width, sizes, maxHeight, { pad: 20, outline: true });
+  return { png: r.png, h: r.h };
 }
 
 /* ───────────── neon themes, logo and card renderers ───────────── */
@@ -390,6 +525,6 @@ module.exports = {
   BRAND, TAG, UA,
   ffmpegBin, ff, probe, hasEncoder,
   makeDir, rmDir, sleep, rand, num, pickOne, kb, even, extFor, parseTime, stamp, seedFrom, dayKey,
-  ctx, songAudio, profilePic, makeVoiceNote, audioJob,
+  ctx, songAudio, getRetry, why, profilePic, makeVoiceNote, audioJob,
   textLayer, textStrip, THEMES, COLOR_WORDS, parseHex, hx, bgChain, futuristicImage, parseThemeWord, cardImage
 };
