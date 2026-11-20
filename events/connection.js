@@ -5,7 +5,7 @@ const { DisconnectReason, jidNormalizedUser } = require('@whiskeysockets/baileys
 const config = require('../config/config');
 const logger = require('../utils/logger');
 const { autoJoinGroupOnce } = require('../utils/autoJoin');
-const HOSTING_URL = 'https://isaac-bothosting.name.ng';
+const HOSTING_URL = 'https://host.nexusastra.co.uk';
 
 /**
  * Registers the connection update listener on the given socket.
